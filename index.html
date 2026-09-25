@@ -1,0 +1,309 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>El factor de equidad actuarial en una fórmula</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Public+Sans:wght@400;500;600;700&family=STIX+Two+Text:ital,wght@0,400;0,600;1,400&display=swap" rel="stylesheet">
+<style>
+:root{
+  --papel:#F4F6F7; --superficie:#FFFFFF; --tinta:#1B2A35; --tinta2:#4E5E69; --regla:#CBD4DA;
+  --acento:#0E5B63; --acento-suave:#DCEBEC;
+  --sans:"Public Sans",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+  --serif:"STIX Two Text","Cambria Math",Cambria,Georgia,serif;
+  box-sizing:border-box; padding-top:env(safe-area-inset-top,0px); padding-bottom:env(safe-area-inset-bottom,0px);
+}
+@media (prefers-color-scheme: dark){ :root:not([data-theme="light"]){
+  --papel:#12191E; --superficie:#1A242B; --tinta:#E6ECEF; --tinta2:#A5B3BC; --regla:#33434E;
+  --acento:#6FC2C8; --acento-suave:#1F3A3E; } }
+:root[data-theme="dark"]{ --papel:#12191E; --superficie:#1A242B; --tinta:#E6ECEF; --tinta2:#A5B3BC; --regla:#33434E; --acento:#6FC2C8; --acento-suave:#1F3A3E; }
+*,*::before,*::after{box-sizing:inherit}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+body{margin:0;background:var(--papel);color:var(--tinta);font-family:var(--sans);font-size:1rem;line-height:1.55;-webkit-font-smoothing:antialiased}
+.envoltura{max-width:1180px;margin:0 auto;padding:clamp(1.25rem,3vw,2.75rem)}
+header{max-width:46rem;margin-bottom:clamp(1.5rem,3vw,2.5rem)}
+h1{font-family:var(--serif);font-weight:400;font-size:clamp(2rem,4.6vw,3.35rem);line-height:1.08;letter-spacing:-.01em;margin:0 0 .9rem}
+.entradilla{font-size:1.125rem;color:var(--tinta2);margin:0 0 .75rem;max-width:40rem}
+.autores{font-size:.875rem;color:var(--tinta2);margin:0}
+.banco{display:grid;grid-template-columns:minmax(250px,300px) 1fr;gap:clamp(1.25rem,3vw,2.5rem);align-items:start}
+@media (max-width:860px){.banco{grid-template-columns:1fr}}
+.mandos{background:var(--superficie);border:1px solid var(--regla);border-radius:10px;padding:1.25rem}
+fieldset{border:0;margin:0 0 1.25rem;padding:0}
+legend{font-weight:600;font-size:.9375rem;margin-bottom:.5rem;padding:0}
+.segmentado{display:flex;border:1px solid var(--regla);border-radius:8px;overflow:hidden}
+.segmentado label{flex:1;text-align:center;font-size:.875rem;padding:.5rem .4rem;cursor:pointer;border-left:1px solid var(--regla)}
+.segmentado label:first-of-type{border-left:0}
+.segmentado input{position:absolute;opacity:0;pointer-events:none}
+.segmentado input:checked+span{font-weight:600}
+.segmentado label:has(input:checked){background:var(--acento);color:#fff}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]) .segmentado label:has(input:checked){color:#0B1A1C}}
+.segmentado label:has(input:focus-visible){outline:2px solid var(--acento);outline-offset:-4px}
+.vista{flex-direction:column}
+.vista label{text-align:left;border-left:0;border-top:1px solid var(--regla);padding:.5rem .75rem}
+.vista label:first-of-type{border-top:0}
+.deslizador{margin-bottom:1rem}
+.deslizador .fila{display:flex;justify-content:space-between;align-items:baseline;gap:.5rem;font-size:.875rem}
+.deslizador output{white-space:nowrap;font-variant-numeric:tabular-nums;font-weight:600}
+.deslizador .ayuda{font-size:.78rem;color:var(--tinta2);margin:.15rem 0 0}
+input[type=range]{width:100%;accent-color:var(--acento);margin:.35rem 0 0}
+.deslizador.clave{background:var(--acento-suave);border-radius:8px;padding:.75rem;margin:0 -.25rem 1.1rem}
+button.reiniciar{width:100%;font:inherit;font-size:.875rem;padding:.55rem;border-radius:8px;border:1px solid var(--acento);background:transparent;color:var(--acento);cursor:pointer}
+button.reiniciar:hover{background:var(--acento-suave)}
+button.reiniciar:focus-visible{outline:2px solid var(--acento);outline-offset:2px}
+.lienzo{min-width:0}
+.titulo-malla{font-family:var(--serif);font-size:1.5rem;font-weight:400;margin:0 0 .25rem}
+.sub-malla{color:var(--tinta2);font-size:.9rem;margin:0 0 .9rem;min-height:1.4em}
+.desplazable{overflow-x:auto;border-radius:10px;border:1px solid var(--regla);background:var(--superficie)}
+table.malla{border-collapse:collapse;width:100%;min-width:560px;font-variant-numeric:tabular-nums}
+.malla th{font-size:.8125rem;font-weight:600;padding:.4rem .3rem;color:var(--tinta2)}
+.malla thead th{border-bottom:1px solid var(--regla)}
+.malla tbody th{border-right:1px solid var(--regla);width:3.2rem}
+.malla td{padding:.42rem .2rem;text-align:center;font-size:.875rem;color:#1B2A35;border:1px solid rgba(27,42,53,.18);transition:background-color .25s ease}
+.malla td:focus-visible{outline:2px solid #1B2A35;outline-offset:-2px}
+.malla caption{caption-side:top;text-align:left;font-size:.8125rem;color:var(--tinta2);padding:.55rem .75rem;border-bottom:1px solid var(--regla)}
+.cifras{display:grid;grid-template-columns:repeat(4,1fr);gap:1px;background:var(--regla);border:1px solid var(--regla);border-radius:10px;overflow:hidden;margin-top:1rem}
+@media (max-width:560px){.cifras{grid-template-columns:repeat(2,1fr)}}
+.cifra{background:var(--superficie);padding:.8rem .9rem}
+.cifra b{display:block;font-family:var(--serif);font-weight:400;font-size:1.65rem;line-height:1.1;font-variant-numeric:tabular-nums}
+.cifra span{font-size:.8rem;color:var(--tinta2)}
+.aviso{font-size:.82rem;color:var(--tinta2);margin:.6rem 0 0;min-height:1.3em}
+section.texto{max-width:46rem;margin-top:clamp(2.5rem,5vw,4rem)}
+h2{font-family:var(--serif);font-weight:400;font-size:1.75rem;margin:0 0 .75rem}
+.texto p{margin:0 0 1rem}
+.formula{font-family:var(--serif);font-size:1.25rem;line-height:1.5;background:var(--superficie);border-left:3px solid var(--acento);padding:.9rem 1.1rem;margin:0 0 .6rem;overflow-x:auto;white-space:nowrap}
+.formula i{font-style:italic}
+.pie-formula{font-size:.9rem;color:var(--tinta2);margin:0 0 1.5rem}
+table.leyes{border-collapse:collapse;width:100%;font-size:.9rem;font-variant-numeric:tabular-nums;background:var(--superficie)}
+.leyes th,.leyes td{padding:.55rem .7rem;border-bottom:1px solid var(--regla);text-align:right}
+.leyes th[scope=row],.leyes thead th:first-child{text-align:left;font-weight:400}
+.leyes thead th{font-weight:600;font-size:.82rem;color:var(--tinta2)}
+.leyes tr.dest{background:var(--acento-suave)}
+.leyes tr.dest th{font-weight:600}
+footer{margin-top:3rem;padding-top:1rem;border-top:1px solid var(--regla);font-size:.8rem;color:var(--tinta2);max-width:46rem}
+@media (prefers-reduced-motion: reduce){.malla td{transition:none}}
+</style>
+</head>
+<body>
+<div class="envoltura">
+<header>
+  <h1>El factor de equidad actuarial en una fórmula</h1>
+  <p class="entradilla">La malla del Instituto de Actuarios Españoles, recalculada con una ley de Weibull y un único dato demográfico: la esperanza de vida a los 65 años. Mueve ese dato y la malla entera se recalcula.</p>
+  <p class="autores">Marcos González Fernández y Francisco José Sáez Trujillo, Universidad de León</p>
+</header>
+
+<main class="banco">
+  <aside class="mandos" aria-label="Supuestos del cálculo">
+    <fieldset>
+      <legend>Informe de referencia</legend>
+      <div class="segmentado" role="radiogroup">
+        <label><input type="radio" name="esc" value="2020" checked><span>IAE 2020</span></label>
+        <label><input type="radio" name="esc" value="2025"><span>IAE 2025</span></label>
+      </div>
+    </fieldset>
+    <fieldset>
+      <legend>Qué mostrar</legend>
+      <div class="segmentado vista">
+        <label><input type="radio" name="vista" value="modelo" checked><span>FdEA del modelo de Weibull</span></label>
+        <label><input type="radio" name="vista" value="iae"><span>FdEA publicado por el IAE</span></label>
+        <label><input type="radio" name="vista" value="dif"><span>Diferencia (IAE − Weibull)</span></label>
+      </div>
+    </fieldset>
+    <div class="deslizador clave">
+      <div class="fila"><label for="e65">Esperanza de vida a los 65</label><output id="o-e65"></output></div>
+      <input id="e65" type="range" min="18" max="26" step="0.01">
+      <p class="ayuda">El único dato demográfico del modelo.</p>
+    </div>
+    <div class="deslizador">
+      <div class="fila"><label for="r">Crecimiento real pasado del PIB</label><output id="o-r"></output></div>
+      <input id="r" type="range" min="0" max="0.05" step="0.0001">
+      <p class="ayuda">Capitaliza las cotizaciones.</p>
+    </div>
+    <div class="deslizador">
+      <div class="fila"><label for="i">Crecimiento real futuro del PIB</label><output id="o-i"></output></div>
+      <input id="i" type="range" min="0" max="0.05" step="0.0001">
+      <p class="ayuda">Descuenta las pensiones.</p>
+    </div>
+    <div class="deslizador">
+      <div class="fila"><label for="g">Crecimiento real de las bases</label><output id="o-g"></output></div>
+      <input id="g" type="range" min="-0.01" max="0.02" step="0.0001">
+    </div>
+    <div class="deslizador">
+      <div class="fila"><label for="tc">Tipo de cotización imputable</label><output id="o-tc"></output></div>
+      <input id="tc" type="range" min="0.12" max="0.25" step="0.0001">
+    </div>
+    <button class="reiniciar" type="button" id="reiniciar">Restablecer los supuestos del IAE</button>
+  </aside>
+
+  <div class="lienzo">
+    <h2 class="titulo-malla" id="titulo-malla"></h2>
+    <p class="sub-malla" id="detalle" aria-live="polite">Pasa por una celda para comparar el modelo con el IAE.</p>
+    <div class="desplazable">
+      <table class="malla" id="malla">
+        <caption id="leyenda"></caption>
+        <thead></thead><tbody></tbody>
+      </table>
+    </div>
+    <div class="cifras">
+      <div class="cifra"><b id="k-mape"></b><span>error medio frente al IAE</span></div>
+      <div class="cifra"><b id="k-celdas"></b><span>celdas a ±0,05 del IAE</span></div>
+      <div class="cifra"><b id="k-media"></b><span>FdEA medio del modelo</span></div>
+      <div class="cifra"><b id="k-ms"></b><span>tiempo de cálculo</span></div>
+    </div>
+    <p class="aviso" id="aviso"></p>
+  </div>
+</main>
+
+<section class="texto">
+  <h2>Cómo funciona</h2>
+  <p>El modelo del IAE necesita una tabla de mortalidad completa: 121 probabilidades por sexo y año, con sus factores de mejora. El modelo de Weibull sustituye esa tabla por una curva de supervivencia con cuatro parámetros, estimados una sola vez.</p>
+  <div class="formula"><i>p</i>(<i>t</i>) = exp[ −( <i>t</i> / <i>a</i>(<i>x</i>) )<sup><i>b</i></sup> ],&nbsp;&nbsp;&nbsp;<i>a</i>(<i>x</i>) = <i>φ</i> · ( <i>a</i><sub>0</sub> + <i>a</i><sub>1</sub>(<i>x</i>−60) + <i>a</i><sub>2</sub>(<i>x</i>−60)<sup>2</sup> )</div>
+  <p class="pie-formula"><i>t</i>, meses desde la jubilación; <i>x</i>, edad de jubilación. <span id="parametros"></span></p>
+  <p>La esperanza de vida tiene forma cerrada, así que actualizar la mortalidad no exige reestimar nada: basta con reescalar.</p>
+  <div class="formula"><i>e</i><sub>65</sub> = <i>a</i>(65) · Γ(1 + 1/<i>b</i>)&nbsp;&nbsp;&nbsp;⇒&nbsp;&nbsp;&nbsp;<i>φ</i> = <i>e</i><sub>65</sub> / 21,14</div>
+  <p class="pie-formula">Con <i>φ</i> = 1 el modelo reproduce la esperanza de vida de las tablas de 2020 (21,14 años). Para 2025 basta con 21,52 / 21,14.</p>
+  <p>El FdEA es entonces el cociente de una integral y una suma:</p>
+  <div class="formula">FdEA = 14 · BR · TS · ∫ e<sup>−<i>δt</i></sup> <i>p</i>(<i>t</i>) d<i>t</i> &nbsp;/&nbsp; Σ TC · base<sub><i>k</i></sub> · (1+<i>r</i>)<sup><i>k</i></sup></div>
+  <p class="pie-formula">BR, base reguladora; TS, tasa de sustitución de cada individuo tipo; <i>δ</i>, crecimiento real futuro del PIB; <i>r</i>, crecimiento real pasado. Toda esta página es esa fórmula, evaluada 121 veces en tu navegador.</p>
+</section>
+
+<section class="texto">
+  <h2>Por qué Weibull</h2>
+  <p>Todas las leyes se estiman sobre la misma tabla en 2020 y se llevan a 2025 cambiando solo la esperanza de vida. Error relativo medio frente a las mallas publicadas por el IAE:</p>
+  <div class="desplazable">
+  <table class="leyes">
+    <thead><tr><th>Ley de supervivencia</th><th>Parámetros</th><th>2020 (ajuste)</th><th>2025 (fuera de muestra)</th></tr></thead>
+    <tbody>
+<tr><th scope="row">Tabla de mortalidad (fórmula abierta)</th><td>121 × 2</td><td>1,5 %</td><td>2,8 %</td></tr>
+<tr class="dest"><th scope="row">Weibull, escala según la edad (Ec. 16-17)</th><td>4</td><td>1,6 %</td><td>2,8 %</td></tr>
+<tr><th scope="row">Weibull sobre la edad alcanzada</th><td>2</td><td>1,5 %</td><td>2,8 %</td></tr>
+<tr><th scope="row">Gompertz</th><td>2</td><td>1,5 %</td><td>3,0 %</td></tr>
+<tr><th scope="row">Gompertz-Makeham</th><td>3</td><td>1,4 %</td><td>3,1 %</td></tr>
+<tr><th scope="row">Exponencial</th><td>1</td><td>11,8 %</td><td>7,5 %</td></tr>
+    </tbody>
+  </table>
+  </div>
+  <p style="margin-top:1rem">Las leyes de dos a cuatro parámetros igualan a la tabla completa. Entre ellas, Weibull es la que mejor se traslada a 2025: frente a la propia fórmula abierta, su error es del 0,3 % en 2020 y del 0,03 % en 2025. La diferencia restante con el IAE no es demográfica: procede de la serie histórica de bases medias, que el IAE no publica.</p>
+  <p>El modelo también reproduce el efecto de la longevidad que mide el IAE. Pasar de 21,52 a 22,63 años de esperanza de vida eleva el FdEA medio un 4,5 %; el IAE (2025, tabla 15) estima un 4,6 %.</p>
+</section>
+
+<footer>
+  <p>Fuentes: Instituto de Actuarios Españoles (2020), <i>Factor de equidad actuarial del sistema contributivo de pensiones de jubilación español</i>; Instituto de Actuarios Españoles (2025), <i>Actualización del factor de equidad actuarial (2025)</i>; DGSFP (2020), tablas PER2020. Supuestos del IAE: pensión revalorizada con el IPC, 14 pagas, base reguladora sobre los últimos 25 años, tipo de cotización de jubilación del 16,15 % (2020) y del 16,37 % más el MEI (2025), exención de cuotas tras la edad ordinaria en 2025. El crecimiento real de las bases de 2025 (−0,13 %) se fija con el paso (a) de la tabla 7 del IAE (2025).</p>
+</footer>
+</div>
+
+<script>
+const D = {"par": [347.015142610826, -12.691137894375858, 0.04491284022870224, 2.8528966259278503], "caej20": [[0.565, 0.565, 0.617, 0.687, 0.774, 0.862, 0.932, 0.959, 0.987, 1.014, 1.042], [0.597, 0.668, 0.668, 0.704, 0.793, 0.883, 0.954, 0.982, 1.009, 1.037, 1.064], [0.611, 0.684, 0.757, 0.794, 0.812, 0.904, 0.977, 1.005, 1.032, 1.06, 1.087], [0.625, 0.7, 0.775, 0.85, 0.906, 0.925, 1.0, 1.028, 1.055, 1.083, 1.11], [0.625, 0.7, 0.775, 0.85, 0.925, 1.0, 1.0, 1.028, 1.055, 1.083, 1.11], [0.625, 0.7, 0.775, 0.85, 0.925, 1.0, 1.028, 1.028, 1.055, 1.083, 1.11], [0.65, 0.72, 0.79, 0.86, 0.93, 1.0, 1.04, 1.055, 1.055, 1.083, 1.11], [0.65, 0.72, 0.79, 0.86, 0.93, 1.0, 1.04, 1.08, 1.083, 1.11, 1.11], [0.65, 0.72, 0.79, 0.86, 0.93, 1.0, 1.04, 1.08, 1.12, 1.11, 1.138], [0.675, 0.74, 0.805, 0.87, 0.935, 1.0, 1.04, 1.08, 1.12, 1.16, 1.138], [0.675, 0.74, 0.805, 0.87, 0.935, 1.0, 1.04, 1.08, 1.12, 1.16, 1.2]], "ts25": [[0.5797, 0.6533, 0.7852, 0.8797, 0.9201999999999999, 0.9601999999999999, 1.0002, 1.0802], [0.5941, 0.6695, 0.8047, 0.9015000000000001, 0.943, 0.983, 1.023, 1.103], [0.6470999999999999, 0.6857, 0.8240999999999999, 0.9233, 0.9658, 1.0058, 1.0458, 1.1258], [0.7415, 0.7415, 0.8436, 0.9451, 0.9886, 1.0286, 1.0686, 1.1486], [0.79, 0.9323, 0.9323, 0.956, 1.0, 1.04, 1.08, 1.16], [0.79, 0.945, 0.9648, 0.9648, 1.0, 1.04, 1.08, 1.16], [0.81, 0.9475, 1.0, 1.04, 1.04, 1.04, 1.08, 1.16], [0.81, 0.9475, 1.0, 1.04, 1.08, 1.08, 1.08, 1.16], [0.81, 0.9475, 1.0, 1.04, 1.08, 1.12, 1.12, 1.16], [0.83, 0.95, 1.0, 1.04, 1.08, 1.12, 1.16, 1.16], [0.83, 0.95, 1.0, 1.04, 1.08, 1.12, 1.16, 1.2]], "iae20": [[1.43, 1.39, 1.48, 1.59, 1.74, 1.87, 1.95, 1.94, 1.92, 1.9, 1.87], [1.44, 1.57, 1.53, 1.56, 1.7, 1.83, 1.91, 1.9, 1.88, 1.85, 1.82], [1.41, 1.54, 1.65, 1.68, 1.67, 1.79, 1.87, 1.85, 1.83, 1.81, 1.78], [1.38, 1.51, 1.62, 1.72, 1.78, 1.75, 1.83, 1.81, 1.79, 1.77, 1.74], [1.33, 1.44, 1.55, 1.65, 1.74, 1.82, 1.75, 1.74, 1.72, 1.69, 1.67], [1.27, 1.38, 1.49, 1.58, 1.67, 1.74, 1.73, 1.67, 1.65, 1.63, 1.6], [1.27, 1.37, 1.46, 1.54, 1.61, 1.67, 1.68, 1.64, 1.58, 1.56, 1.54], [1.22, 1.31, 1.4, 1.48, 1.55, 1.61, 1.62, 1.62, 1.56, 1.54, 1.48], [1.17, 1.26, 1.35, 1.42, 1.49, 1.55, 1.55, 1.55, 1.55, 1.48, 1.45], [1.17, 1.25, 1.32, 1.38, 1.44, 1.49, 1.49, 1.49, 1.49, 1.48, 1.4], [1.12, 1.2, 1.27, 1.33, 1.38, 1.43, 1.43, 1.43, 1.43, 1.43, 1.41]], "iae25": [[1.39, 1.52, 1.76, 1.9, 1.92, 1.97, 2.02, 2.19], [1.37, 1.49, 1.73, 1.87, 1.89, 1.93, 1.98, 2.14], [1.43, 1.47, 1.7, 1.84, 1.85, 1.9, 1.94, 2.09], [1.58, 1.52, 1.67, 1.81, 1.82, 1.86, 1.9, 2.04], [1.61, 1.84, 1.78, 1.76, 1.77, 1.81, 1.84, 1.97], [1.55, 1.79, 1.77, 1.7, 1.7, 1.73, 1.76, 1.89], [1.53, 1.73, 1.76, 1.8, 1.73, 1.66, 1.69, 1.81], [1.47, 1.66, 1.69, 1.73, 1.76, 1.69, 1.62, 1.73], [1.41, 1.6, 1.63, 1.66, 1.69, 1.71, 1.64, 1.66], [1.39, 1.54, 1.57, 1.6, 1.62, 1.65, 1.67, 1.6], [1.34, 1.49, 1.51, 1.54, 1.57, 1.59, 1.6, 1.62]], "w20": [[1.4417, 1.3998, 1.4825, 1.5988, 1.7423, 1.8741, 1.954, 1.9357, 1.9144, 1.8863, 1.8549], [1.4602, 1.5863, 1.5384, 1.5703, 1.711, 1.8401, 1.9172, 1.8999, 1.8759, 1.849, 1.8155], [1.4336, 1.5582, 1.6724, 1.699, 1.6806, 1.8072, 1.8835, 1.8652, 1.8406, 1.8131, 1.7793], [1.4079, 1.531, 1.6438, 1.7462, 1.8003, 1.7753, 1.8508, 1.8317, 1.8064, 1.7784, 1.7443], [1.3526, 1.4709, 1.5792, 1.6776, 1.7659, 1.8439, 1.7781, 1.7598, 1.7355, 1.7086, 1.6759], [1.3004, 1.4141, 1.5183, 1.6129, 1.6977, 1.7727, 1.7574, 1.6919, 1.6685, 1.6427, 1.6112], [1.3011, 1.3993, 1.4889, 1.5699, 1.6421, 1.7054, 1.7104, 1.6704, 1.6052, 1.5803, 1.55], [1.2525, 1.347, 1.4333, 1.5112, 1.5807, 1.6417, 1.6465, 1.6461, 1.5862, 1.5592, 1.4921], [1.2064, 1.2974, 1.3805, 1.4556, 1.5226, 1.5813, 1.5859, 1.5855, 1.58, 1.5018, 1.4734], [1.2073, 1.2851, 1.3557, 1.4191, 1.4752, 1.5239, 1.5284, 1.528, 1.5227, 1.5125, 1.42], [1.1641, 1.2391, 1.3073, 1.3684, 1.4225, 1.4694, 1.4737, 1.4734, 1.4683, 1.4584, 1.4438]], "w25": [[1.4426, 1.5701, 1.8199, 1.9633, 1.9878, 2.0331, 2.0732, 2.1888], [1.4161, 1.5412, 1.7865, 1.9271, 1.9506, 1.9912, 2.0267, 2.134], [1.4786, 1.5132, 1.7539, 1.8921, 1.9146, 1.9509, 1.9822, 2.0818], [1.6255, 1.5699, 1.7225, 1.8581, 1.8797, 1.9121, 1.9394, 2.032], [1.6627, 1.895, 1.8276, 1.8045, 1.825, 1.8542, 1.8784, 1.965], [1.5974, 1.8454, 1.817, 1.7496, 1.753, 1.7797, 1.8016, 1.8831], [1.5745, 1.7788, 1.8105, 1.843, 1.802, 1.7592, 1.7813, 1.8629], [1.5146, 1.7111, 1.7416, 1.7717, 1.7977, 1.7539, 1.7089, 1.7858], [1.4578, 1.6469, 1.6763, 1.7043, 1.7282, 1.7474, 1.7014, 1.7132], [1.4386, 1.5902, 1.6143, 1.6404, 1.6624, 1.6798, 1.6929, 1.6447], [1.3861, 1.5322, 1.5554, 1.5797, 1.6, 1.6158, 1.6274, 1.6346]]};
+// Núcleo del modelo: FdEA con supervivencia de Weibull (Ec. 16-17), escala ajustada por e65.
+function crearModelo(D){
+  const [A0,A1,A2,B]=D.par, E65_REF=21.14, ANIOS=[33,34,35,36,37,38,39,40,41,42,43];
+  const m=x=>Math.pow(1+x,1/12)-1;
+  function tc(esc,anio){
+    if(esc.anio===2020) return esc.tc;
+    const extra = anio<=2022?0 : anio===2023?0.0035 : anio===2024?0.0041 : 0.0046; // MEI
+    return esc.tc+extra;
+  }
+  function aportBR(esc,anios,edad){
+    const n=12*anios, gm=m(esc.g), rm=m(esc.r);
+    let vaa=0, br=0;
+    const edadOrd = anios>=38.25?65:66+8/12;
+    for(let t=0;t<n;t++){
+      const antes=n-t, base=Math.pow(1+gm,t-(n-1));
+      let tipo=tc(esc, esc.anio-Math.ceil(antes/12));
+      if(esc.exencion && edad-antes/12>=edadOrd) tipo=0;
+      vaa+=base*tipo*Math.pow(1+rm,antes);
+      if(t>=n-300) br+=base;
+    }
+    return [vaa, br/350];
+  }
+  function renta(esc,edad){
+    const phi=esc.e65/E65_REF, a=phi*(A0+A1*(edad-60)+A2*(edad-60)**2)/12; // escala en años
+    const d=Math.log(1+esc.i), T=120-edad, N=2400, h=T/N;
+    const f=t=>Math.exp(-d*t-Math.pow(t/a,B));
+    let s=f(0)+f(T);
+    for(let k=1;k<N;k++) s+=(k%2?4:2)*f(k*h);
+    return s*h/3;
+  }
+  function malla(esc){
+    return ANIOS.map((an,i)=>esc.edades.map((e,j)=>{
+      const [v,br]=aportBR(esc,an,e); return br*esc.caej[i][j]*14*renta(esc,e)/v; }));
+  }
+  const e65cerrada=esc=>esc.e65; // por construcción: e65 = a(65)·Γ(1+1/b)
+  return {malla,ANIOS};
+}
+
+
+const M = crearModelo(D);
+const ESC = {
+  "2020": {anio:2020, edades:[60,61,62,63,64,65,66,67,68,69,70], caej:D.caej20, iae:D.iae20, tc:0.1615, r:0.0248, i:0.0159, g:0.0022, e65:21.14, exencion:false},
+  "2025": {anio:2025, edades:[63,64,65,66,67,68,69,70], caej:D.ts25, iae:D.iae25, tc:0.1637, r:0.0224, i:0.0122, g:-0.0013, e65:21.52, exencion:true}
+};
+const $ = s => document.querySelector(s);
+const coma = (v,d=2) => (Math.abs(v)<0.5*Math.pow(10,-d)?0:v).toFixed(d).replace('.',',').replace('-','−');
+const pct = (v,d=2) => coma(100*v,d)+' %';
+let esc = "2020", vista = "modelo", sup = {...ESC["2020"]}, ultima = null;
+
+document.getElementById('parametros').textContent =
+  `Estimación: a₀ = ${coma(D.par[0],1)}; a₁ = ${coma(D.par[1],2)}; a₂ = ${coma(D.par[2],4)}; b = ${coma(D.par[3],3)}.`;
+
+const mezcla=(c1,c2,f)=>{const a=[0,2,4].map(i=>parseInt(c1.substr(i,2),16)),b=[0,2,4].map(i=>parseInt(c2.substr(i,2),16));
+  return '#'+a.map((x,k)=>Math.round(x+(b[k]-x)*f).toString(16).padStart(2,'0')).join('');};
+function colores(m,inv){
+  const v=m.flat().slice().sort((x,y)=>x-y), lo=v[0], hi=v[v.length-1], n=v.length;
+  const med = n%2? v[(n-1)/2] : (v[n/2-1]+v[n/2])/2;
+  const [c0,c2]=inv?['63BE7B','F8696B']:['F8696B','63BE7B'];
+  return m.map(r=>r.map(x=> x<=med ? mezcla(c0,'FFEB84',med===lo?0:(x-lo)/(med-lo)) : mezcla('FFEB84',c2,hi===med?0:(x-med)/(hi-med))));
+}
+function pintar(){
+  const e = ESC[esc];
+  const t0 = performance.now();
+  const W = M.malla({...sup, edades:e.edades, caej:e.caej, anio:e.anio, exencion:e.exencion});
+  const ms = performance.now()-t0;
+  const I = e.iae, dif = I.map((r,i)=>r.map((v,j)=>v-W[i][j]));
+  const mostrar = vista==='modelo'?W : vista==='iae'?I : dif;
+  const cols = vista==='dif' ? colores(dif.map(r=>r.map(Math.abs)),true) : colores(mostrar,false);
+  $('#malla thead').innerHTML = '<tr><th scope="col">Años</th>'+e.edades.map(x=>`<th scope="col">${x}</th>`).join('')+'</tr>';
+  $('#malla tbody').innerHTML = M.ANIOS.map((a,i)=>`<tr><th scope="row">${a}</th>`+
+    e.edades.map((x,j)=>`<td tabindex="0" data-i="${i}" data-j="${j}" style="background:${cols[i][j]}">${coma(mostrar[i][j])}</td>`).join('')+'</tr>').join('');
+  const rel = dif.flat().map((d,k)=>Math.abs(d)/I.flat()[k]);
+  $('#k-mape').textContent = pct(rel.reduce((s,x)=>s+x,0)/rel.length,1);
+  $('#k-celdas').textContent = Math.round(100*dif.flat().filter(d=>Math.abs(d)<=0.05+1e-9).length/rel.length)+' %';
+  $('#k-media').textContent = coma(W.flat().reduce((s,x)=>s+x,0)/rel.length);
+  $('#k-ms').textContent = Math.max(1,Math.round(ms))+' ms';
+  $('#leyenda').textContent = 'Filas: años cotizados. Columnas: edad de jubilación. ' + (vista==='dif' ? 'Verde, diferencia pequeña; rojo, la mayor diferencia.' : 'Colores con la escala del IAE: rojo, mínimo; verde, máximo.');
+  const tit = {modelo:'FdEA del modelo de Weibull', iae:'FdEA publicado por el IAE', dif:'Diferencia entre el IAE y el modelo'}[vista];
+  $('#titulo-malla').textContent = `${tit}, ${esc}`;
+  const base = ESC[esc], cambiado = ['e65','r','i','g','tc'].some(k=>Math.abs(sup[k]-base[k])>1e-9);
+  $('#aviso').textContent = cambiado
+    ? 'Has cambiado los supuestos del IAE: el error medio ya no mide el ajuste, sino cuánto se aleja el escenario de la malla publicada.'
+    : (esc==='2025' ? 'Validación fuera de muestra: la ley se estimó en 2020 y aquí solo cambia la esperanza de vida (21,14 → 21,52).' : 'Ajuste: la ley se estima sobre la tabla de 2020.');
+  ultima = {W,I,e};
+}
+function sincronizar(){
+  for(const k of ['e65','r','i','g','tc']){ $('#'+k).value = sup[k]; }
+  etiquetas();
+}
+function etiquetas(){
+  $('#o-e65').textContent = coma(sup.e65)+' años';
+  $('#o-r').textContent = pct(sup.r); $('#o-i').textContent = pct(sup.i);
+  $('#o-g').textContent = pct(sup.g); $('#o-tc').textContent = pct(sup.tc);
+}
+let pendiente=false;
+for(const k of ['e65','r','i','g','tc']){
+  $('#'+k).addEventListener('input', ev=>{ sup[k]=parseFloat(ev.target.value); etiquetas();
+    if(!pendiente){pendiente=true; requestAnimationFrame(()=>{pendiente=false; pintar();});} });
+}
+document.querySelectorAll('input[name=esc]').forEach(r=>r.addEventListener('change',ev=>{esc=ev.target.value; sup={...ESC[esc]}; sincronizar(); pintar();}));
+document.querySelectorAll('input[name=vista]').forEach(r=>r.addEventListener('change',ev=>{vista=ev.target.value; pintar();}));
+$('#reiniciar').addEventListener('click',()=>{sup={...ESC[esc]}; sincronizar(); pintar();});
+function detalle(td){
+  if(!td||!ultima) return; const i=+td.dataset.i, j=+td.dataset.j, {W,I,e}=ultima;
+  $('#detalle').textContent = `${e.edades[j]} años de edad y ${M.ANIOS[i]} cotizados: modelo ${coma(W[i][j])}, IAE ${coma(I[i][j])}, diferencia ${coma(I[i][j]-W[i][j])}.`;
+}
+$('#malla').addEventListener('mouseover',ev=>detalle(ev.target.closest('td')));
+$('#malla').addEventListener('focusin',ev=>detalle(ev.target.closest('td')));
+sincronizar(); pintar();
+</script>
+</body>
+</html>
