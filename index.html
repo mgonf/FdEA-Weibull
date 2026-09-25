@@ -186,6 +186,7 @@ footer{margin-top:3rem;padding-top:1rem;border-top:1px solid var(--regla);font-s
   </div>
   <p style="margin-top:1rem">Las leyes de dos a cuatro parámetros igualan a la tabla completa. Entre ellas, Weibull es la que mejor se traslada a 2025: frente a la propia fórmula abierta, su error es del 0,3 % en 2020 y del 0,03 % en 2025. La diferencia restante con el IAE no es demográfica: procede de la serie histórica de bases medias, que el IAE no publica.</p>
   <p>El modelo también reproduce el efecto de la longevidad que mide el IAE. Pasar de 21,52 a 22,63 años de esperanza de vida eleva el FdEA medio un 4,5 %; el IAE (2025, tabla 15) estima un 4,6 %.</p>
+  <p>De ahí sale una regla de ajuste automático: cada año adicional de esperanza de vida a los 65 exige reducir la pensión inicial entre un 3,8 % y un 3,9 % para mantener el FdEA, con un factor prácticamente igual en todas las edades de jubilación. Mueve la esperanza de vida en el panel y la página te da el factor.</p>
 </section>
 
 <footer>
@@ -243,6 +244,7 @@ const $ = s => document.querySelector(s);
 const coma = (v,d=2) => (Math.abs(v)<0.5*Math.pow(10,-d)?0:v).toFixed(d).replace('.',',').replace('-','−');
 const pct = (v,d=2) => coma(100*v,d)+' %';
 let esc = "2020", vista = "modelo", sup = {...ESC["2020"]}, ultima = null;
+const mediaRef = {};
 
 document.getElementById('parametros').textContent =
   `Estimación: a₀ = ${coma(D.par[0],1)}; a₁ = ${coma(D.par[1],2)}; a₂ = ${coma(D.par[2],4)}; b = ${coma(D.par[3],3)}.`;
@@ -275,7 +277,12 @@ function pintar(){
   const tit = {modelo:'FdEA del modelo de Weibull', iae:'FdEA publicado por el IAE', dif:'Diferencia entre el IAE y el modelo'}[vista];
   $('#titulo-malla').textContent = `${tit}, ${esc}`;
   const base = ESC[esc], cambiado = ['e65','r','i','g','tc'].some(k=>Math.abs(sup[k]-base[k])>1e-9);
-  $('#aviso').textContent = cambiado
+  if(!(esc in mediaRef)) mediaRef[esc] = M.malla({...base, edades:e.edades, caej:e.caej}).flat().reduce((s,x)=>s+x,0)/rel.length;
+  const soloE65 = cambiado && ['r','i','g','tc'].every(k=>Math.abs(sup[k]-base[k])<1e-9);
+  const media = W.flat().reduce((s,x)=>s+x,0)/rel.length, fac = mediaRef[esc]/media;
+  $('#aviso').textContent = soloE65
+    ? `Con una esperanza de vida de ${coma(sup.e65)} años, mantener el FdEA medio del escenario de referencia exigiría multiplicar la pensión inicial por ${coma(fac,3)} (${fac<1?'una reducción':'un aumento'} del ${coma(Math.abs(100*(1-fac)),1)} %). Es el factor de ajuste por longevidad del modelo.`
+    : cambiado
     ? 'Has cambiado los supuestos del IAE: el error medio ya no mide el ajuste, sino cuánto se aleja el escenario de la malla publicada.'
     : (esc==='2025' ? 'Validación fuera de muestra: la ley se estimó en 2020 y aquí solo cambia la esperanza de vida (21,14 → 21,52).' : 'Ajuste: la ley se estima sobre la tabla de 2020.');
   ultima = {W,I,e};

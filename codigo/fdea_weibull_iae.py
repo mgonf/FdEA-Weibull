@@ -19,6 +19,9 @@ su parámetro de escala con la nueva e65 (un único dato).
 
 Uso:
     python fdea_weibull_iae.py            # necesita per2020_ind_2orden.csv en la misma carpeta
+Incluye, además, el FdEA medio ponderado con los pesos del IAE (2020, tabla A1), el contraste
+de la regla de reescalado y el factor de ajuste de la pensión por longevidad.
+
 Salidas: fdea_resultados.xlsx, mallas/*.png, resumen.json
 """
 import json
@@ -84,6 +87,29 @@ FDEA_IAE_25 = np.array([  # IAE (2025), Tabla 5
     [1.41, 1.60, 1.63, 1.66, 1.69, 1.71, 1.64, 1.66],
     [1.39, 1.54, 1.57, 1.60, 1.62, 1.65, 1.67, 1.60],
     [1.34, 1.49, 1.51, 1.54, 1.57, 1.59, 1.60, 1.62]])
+
+
+# IAE (2020), tabla A1: gasto de las altas de jubilación (MCVL 2018), en %, filas 33..43 años
+# cotizados y columnas <=60..>=70 años de edad. Se usan como ponderaciones del FdEA medio.
+PESOS_MCVL_2018 = np.array([
+    [0.03, 1.56, 0.48, 0.48, 0.43, 12.50, 1.06, 0.52, 0.28, 0.19, 0.50],
+    [0.00, 0.51, 0.10, 0.11, 0.15, 0.90, 0.09, 0.05, 0.03, 0.00, 0.05],
+    [0.05, 0.71, 0.13, 0.64, 0.38, 1.27, 0.17, 0.04, 0.04, 0.01, 0.10],
+    [0.07, 0.74, 0.18, 0.48, 0.39, 1.53, 0.09, 0.04, 0.02, 0.05, 0.11],
+    [0.02, 1.10, 0.21, 0.98, 0.42, 1.45, 0.05, 0.02, 0.03, 0.01, 0.04],
+    [0.19, 1.09, 0.29, 1.00, 0.42, 1.59, 0.05, 0.04, 0.05, 0.00, 0.05],
+    [0.13, 1.41, 0.26, 1.04, 0.52, 1.81, 0.06, 0.05, 0.01, 0.02, 0.07],
+    [0.13, 1.60, 0.26, 1.43, 0.57, 1.76, 0.03, 0.07, 0.03, 0.02, 0.05],
+    [0.19, 1.68, 0.36, 1.44, 0.66, 2.51, 0.08, 0.08, 0.02, 0.02, 0.06],
+    [0.11, 2.17, 0.27, 1.66, 0.69, 2.50, 0.06, 0.04, 0.03, 0.01, 0.07],
+    [1.29, 6.67, 1.52, 7.55, 4.18, 15.07, 0.39, 0.14, 0.18, 0.09, 0.56]]) / 100
+
+
+def media_ponderada(M, w):
+    """FdEA medio y desviación típica ponderados (criterio del IAE)."""
+    w = w / w.sum()
+    m = float((M * w).sum())
+    return m, float(np.sqrt((w * (M - m) ** 2).sum()))
 
 
 def tc_2020(anio):
@@ -428,12 +454,56 @@ def main(ruta_per="per2020_ind_2orden.csv", salida="fdea_resultados.xlsx"):
     res["metricas"] = dfm.to_dict(orient="records")
     print(dfm.to_string(index=False))
 
-    # 5) Exportación
+    # 5) Análisis adicionales
+    wp_ = WeibullPaper(*wp.th); wp_.phi = wp.phi * ESC20.e65 / ESC25.e65   # Weibull en 2020
+    W20 = tablas["Weibull (Ec. 16-17)_2020"]
+    w63 = PESOS_MCVL_2018[:, 3:].copy(); w63[:, 0] += PESOS_MCVL_2018[:, :3].sum(1)
+    res["ponderados_2020"] = {
+        "IAE_60_70": media_ponderada(FDEA_IAE_20, PESOS_MCVL_2018),
+        "Weibull_60_70": media_ponderada(W20, PESOS_MCVL_2018),
+        "IAE_63_70": media_ponderada(FDEA_IAE_20[:, 3:], w63),
+        "Weibull_63_70": media_ponderada(W20[:, 3:], w63)}
+
+    # 5b) Contraste del reescalado: la tabla aproximada se proyecta con las mejoras de la
+    # PER2020 (factor de escala de 2020 fijo); Weibull solo recibe su e65. Supuestos de 2025.
+    import copy
+    contraste = []
+    for T in (2025, 2035, 2045, 2065):
+        esc = copy.deepcopy(ESC25); esc.anio_jub = T
+        tm, p = mensualizar(kpx_tabla(per, 65, T, c20)); e65_T = e_x(tm, p)
+        A = fdea_desde_renta(rentas_tabla(per, esc, c20), esc)
+        l = WeibullPaper(*wp.th); l.phi = wp_.phi * e65_T / ESC20.e65
+        Wr = fdea_desde_renta(rentas_ley(l, esc), esc)
+        W0 = fdea_desde_renta(rentas_ley(wp_, esc), esc)
+        contraste.append(dict(anio=T, e65=e65_T, MAPE_reescalado=100 * np.mean(np.abs(Wr / A - 1)),
+                              max_reescalado=100 * np.max(np.abs(Wr / A - 1)),
+                              MAPE_sin_actualizar=100 * np.mean(np.abs(W0 / A - 1))))
+    res["contraste_reescalado"] = contraste
+
+    # 5c) Factor de ajuste por longevidad: coeficiente sobre la pensión inicial que mantiene el
+    # FdEA cuando e65 pasa de 21,52 (2025) a e65_T, con los supuestos financieros de 2025.
+    def renta_W(e65):
+        l = WeibullPaper(*wp.th); l.phi = wp_.phi * e65 / ESC20.e65
+        return rentas_ley(l, ESC25)
+    r0 = renta_W(ESC25.e65)
+    res["factor_ajuste"] = {str(e): {str(x): r0[x] / r[x] for x in ESC25.edades}
+                            for e, r in ((e, renta_W(e)) for e in (22.52, 22.63, 23.11))}
+
+    # 6) Exportación
     from openpyxl import Workbook
     wb = Workbook(); ws = wb.active; ws.title = "metricas"
     ws.append(list(dfm.columns))
     for r in dfm.itertuples(index=False):
         ws.append(list(r))
+    ws3 = wb.create_sheet("ponderados_2020"); ws3.append(["malla", "FdEA medio", "desv. típica"])
+    for k, (m, d) in res["ponderados_2020"].items():
+        ws3.append([k, round(m, 4), round(d, 4)])
+    ws4 = wb.create_sheet("contraste_reescalado"); ws4.append(list(res["contraste_reescalado"][0].keys()))
+    for d in res["contraste_reescalado"]:
+        ws4.append([round(v, 4) for v in d.values()])
+    ws5 = wb.create_sheet("factor_ajuste"); ws5.append(["e65"] + ESC25.edades)
+    for e, d in res["factor_ajuste"].items():
+        ws5.append([float(e)] + [round(d[str(x)], 4) for x in ESC25.edades])
     os.makedirs("mallas", exist_ok=True)
     todas = {"IAE_2020": FDEA_IAE_20, "IAE_2025": FDEA_IAE_25, **tablas}
     for nombre, m in todas.items():
@@ -451,8 +521,9 @@ def main(ruta_per="per2020_ind_2orden.csv", salida="fdea_resultados.xlsx"):
     res["tablas"] = {k: np.round(v, 4).tolist() for k, v in todas.items()}
     with open("resumen.json", "w") as fh:
         json.dump(res, fh, indent=1, ensure_ascii=False)
-    print(json.dumps({k: res[k] for k in ("factor_qx", "parametros", "sensibilidad",
-                                          "elasticidad_e65")}, indent=1))
+    print(json.dumps({k: res[k] for k in ("factor_qx", "parametros", "sensibilidad", "elasticidad_e65",
+                                          "ponderados_2020", "contraste_reescalado", "factor_ajuste")},
+                     indent=1))
 
 
 if __name__ == "__main__":
