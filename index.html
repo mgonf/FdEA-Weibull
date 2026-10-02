@@ -82,63 +82,72 @@ table.leyes{border-collapse:collapse;width:100%;font-size:.9rem;font-variant-num
 .leyes tr.dest{background:var(--acento-suave)}
 .leyes tr.dest th{font-weight:600}
 footer{margin-top:3rem;padding-top:1rem;border-top:1px solid var(--regla);font-size:.8rem;color:var(--tinta2);max-width:46rem}
+html[lang="es"] [data-l="en"],html[lang="en"] [data-l="es"]{display:none}
+.topbar{display:flex;justify-content:flex-end;margin-bottom:1rem}
+.lang{display:inline-flex;border:1px solid var(--regla);border-radius:8px;overflow:hidden;background:var(--superficie)}
+.lang button{font:inherit;font-size:.85rem;font-weight:600;border:0;border-left:1px solid var(--regla);background:transparent;color:var(--tinta2);padding:.35rem .7rem;cursor:pointer}
+.lang button:first-child{border-left:0}
+.lang button[aria-pressed="true"]{background:var(--acento);color:#fff}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]) .lang button[aria-pressed="true"]{color:#0B1A1C}}
+.lang button:focus-visible{outline:2px solid var(--acento);outline-offset:-3px}
 @media (prefers-reduced-motion: reduce){.malla td{transition:none}}
 </style>
 </head>
 <body>
 <div class="envoltura">
 <header>
-  <h1>El factor de equidad actuarial en una fórmula</h1>
-  <p class="entradilla">La malla del Instituto de Actuarios Españoles, recalculada con una ley de Weibull y un único dato demográfico: la esperanza de vida a los 65 años. Mueve ese dato y la malla entera se recalcula.</p>
-  <p class="autores">Marcos González Fernández y Francisco José Sáez Trujillo, Universidad de León</p>
+  <div class="topbar"><div class="lang" role="group" aria-label="Idioma / Language" id="c-lang"><button type="button" data-v="es" lang="es" aria-pressed="true">ES</button><button type="button" data-v="en" lang="en" aria-pressed="false">EN</button></div></div>
+  <h1 data-en="The actuarial fairness factor in one formula">El factor de equidad actuarial en una fórmula</h1>
+  <p class="entradilla" data-en="The grid published by the Spanish Institute of Actuaries (IAE), recomputed with a Weibull law and a single demographic input: life expectancy at 65. Move that input and the whole grid is recomputed.">La malla del Instituto de Actuarios Españoles, recalculada con una ley de Weibull y un único dato demográfico: la esperanza de vida a los 65 años. Mueve ese dato y la malla entera se recalcula.</p>
+  <p class="autores" data-en="Marcos González Fernández and Francisco José Sáez Trujillo, Universidad de León">Marcos González Fernández y Francisco José Sáez Trujillo, Universidad de León</p>
 </header>
 
 <main class="banco">
-  <aside class="mandos" aria-label="Supuestos del cálculo">
+  <aside class="mandos" aria-label="Supuestos del cálculo" data-en-aria="Calculation assumptions">
     <fieldset>
-      <legend>Informe de referencia</legend>
+      <legend data-en="Reference report">Informe de referencia</legend>
       <div class="segmentado" role="radiogroup">
         <label><input type="radio" name="esc" value="2020" checked><span>IAE 2020</span></label>
         <label><input type="radio" name="esc" value="2025"><span>IAE 2025</span></label>
       </div>
     </fieldset>
     <fieldset>
-      <legend>Qué mostrar</legend>
+      <legend data-en="What to show">Qué mostrar</legend>
       <div class="segmentado vista">
-        <label><input type="radio" name="vista" value="modelo" checked><span>FdEA del modelo de Weibull</span></label>
-        <label><input type="radio" name="vista" value="iae"><span>FdEA publicado por el IAE</span></label>
-        <label><input type="radio" name="vista" value="dif"><span>Diferencia (IAE − Weibull)</span></label>
+        <label><input type="radio" name="vista" value="modelo" checked><span data-en="FdEA from the Weibull model">FdEA del modelo de Weibull</span></label>
+        <label><input type="radio" name="vista" value="iae"><span data-en="FdEA published by the IAE">FdEA publicado por el IAE</span></label>
+        <label><input type="radio" name="vista" value="dif"><span data-en="Difference (IAE − Weibull)">Diferencia (IAE − Weibull)</span></label>
       </div>
     </fieldset>
     <div class="deslizador clave">
-      <div class="fila"><label for="e65">Esperanza de vida a los 65</label><output id="o-e65"></output></div>
+      <div class="fila"><label for="e65" data-en="Life expectancy at 65">Esperanza de vida a los 65</label><output id="o-e65"></output></div>
       <input id="e65" type="range" min="18" max="26" step="0.01">
-      <p class="ayuda">El único dato demográfico del modelo.</p>
+      <p class="ayuda" data-en="The model’s only demographic input.">El único dato demográfico del modelo.</p>
     </div>
     <div class="deslizador">
-      <div class="fila"><label for="r">Crecimiento real pasado del PIB</label><output id="o-r"></output></div>
+      <div class="fila"><label for="r" data-en="Past real GDP growth">Crecimiento real pasado del PIB</label><output id="o-r"></output></div>
       <input id="r" type="range" min="0" max="0.05" step="0.0001">
-      <p class="ayuda">Capitaliza las cotizaciones.</p>
+      <p class="ayuda" data-en="Compounds the contributions.">Capitaliza las cotizaciones.</p>
     </div>
     <div class="deslizador">
-      <div class="fila"><label for="i">Crecimiento real futuro del PIB</label><output id="o-i"></output></div>
+      <div class="fila"><label for="i" data-en="Future real GDP growth">Crecimiento real futuro del PIB</label><output id="o-i"></output></div>
       <input id="i" type="range" min="0" max="0.05" step="0.0001">
-      <p class="ayuda">Descuenta las pensiones.</p>
+      <p class="ayuda" data-en="Discounts the pensions.">Descuenta las pensiones.</p>
     </div>
     <div class="deslizador">
-      <div class="fila"><label for="g">Crecimiento real de las bases</label><output id="o-g"></output></div>
+      <div class="fila"><label for="g" data-en="Real growth of contribution bases">Crecimiento real de las bases</label><output id="o-g"></output></div>
       <input id="g" type="range" min="-0.01" max="0.02" step="0.0001">
     </div>
     <div class="deslizador">
-      <div class="fila"><label for="tc">Tipo de cotización imputable</label><output id="o-tc"></output></div>
+      <div class="fila"><label for="tc" data-en="Attributable contribution rate">Tipo de cotización imputable</label><output id="o-tc"></output></div>
       <input id="tc" type="range" min="0.12" max="0.25" step="0.0001">
     </div>
-    <button class="reiniciar" type="button" id="reiniciar">Restablecer los supuestos del IAE</button>
+    <button class="reiniciar" type="button" id="reiniciar" data-en="Reset to the IAE assumptions">Restablecer los supuestos del IAE</button>
   </aside>
 
   <div class="lienzo">
     <h2 class="titulo-malla" id="titulo-malla"></h2>
-    <p class="sub-malla" id="detalle" aria-live="polite">Pasa por una celda para comparar el modelo con el IAE.</p>
+    <p class="sub-malla" id="detalle" aria-live="polite" data-en="Hover over a cell to compare the model with the IAE.">Pasa por una celda para comparar el modelo con el IAE.</p>
     <div class="desplazable">
       <table class="malla" id="malla">
         <caption id="leyenda"></caption>
@@ -146,20 +155,21 @@ footer{margin-top:3rem;padding-top:1rem;border-top:1px solid var(--regla);font-s
       </table>
     </div>
     <div class="cifras">
-      <div class="cifra"><b id="k-mape"></b><span>error medio frente al IAE</span></div>
-      <div class="cifra"><b id="k-celdas"></b><span>celdas a ±0,05 del IAE</span></div>
-      <div class="cifra"><b id="k-media"></b><span>FdEA medio del modelo</span></div>
-      <div class="cifra"><b id="k-ms"></b><span>tiempo de cálculo</span></div>
+      <div class="cifra"><b id="k-mape"></b><span data-en="mean error vs the IAE">error medio frente al IAE</span></div>
+      <div class="cifra"><b id="k-celdas"></b><span data-en="cells within ±0.05 of the IAE">celdas a ±0,05 del IAE</span></div>
+      <div class="cifra"><b id="k-media"></b><span data-en="mean FdEA of the model">FdEA medio del modelo</span></div>
+      <div class="cifra"><b id="k-ms"></b><span data-en="computation time">tiempo de cálculo</span></div>
     </div>
     <p class="aviso" id="aviso"></p>
   </div>
 </main>
 
+<div data-l="es" lang="es">
 <section class="texto">
   <h2>Cómo funciona</h2>
   <p>El modelo del IAE necesita una tabla de mortalidad completa: 121 probabilidades por sexo y año, con sus factores de mejora. El modelo de Weibull sustituye esa tabla por una curva de supervivencia con cuatro parámetros, estimados una sola vez.</p>
   <div class="formula"><i>p</i>(<i>t</i>) = exp[ −( <i>t</i> / <i>a</i>(<i>x</i>) )<sup><i>b</i></sup> ],&nbsp;&nbsp;&nbsp;<i>a</i>(<i>x</i>) = <i>φ</i> · ( <i>a</i><sub>0</sub> + <i>a</i><sub>1</sub>(<i>x</i>−60) + <i>a</i><sub>2</sub>(<i>x</i>−60)<sup>2</sup> )</div>
-  <p class="pie-formula"><i>t</i>, meses desde la jubilación; <i>x</i>, edad de jubilación. <span id="parametros"></span></p>
+  <p class="pie-formula"><i>t</i>, meses desde la jubilación; <i>x</i>, edad de jubilación. <span class="parametros"></span></p>
   <p>La esperanza de vida tiene forma cerrada, así que actualizar la mortalidad no exige reestimar nada: basta con reescalar.</p>
   <div class="formula"><i>e</i><sub>65</sub> = <i>a</i>(65) · Γ(1 + 1/<i>b</i>)&nbsp;&nbsp;&nbsp;⇒&nbsp;&nbsp;&nbsp;<i>φ</i> = <i>e</i><sub>65</sub> / 21,14</div>
   <p class="pie-formula">Con <i>φ</i> = 1 el modelo reproduce la esperanza de vida de las tablas de 2020 (21,14 años). Para 2025 basta con 21,52 / 21,14.</p>
@@ -192,6 +202,46 @@ footer{margin-top:3rem;padding-top:1rem;border-top:1px solid var(--regla);font-s
 <footer>
   <p>Fuentes: Instituto de Actuarios Españoles (2020), <i>Factor de equidad actuarial del sistema contributivo de pensiones de jubilación español</i>; Instituto de Actuarios Españoles (2025), <i>Actualización del factor de equidad actuarial (2025)</i>; DGSFP (2020), tablas PER2020. Supuestos del IAE: pensión revalorizada con el IPC, 14 pagas, base reguladora sobre los últimos 25 años, tipo de cotización de jubilación del 16,15 % (2020) y del 16,37 % más el MEI (2025), exención de cuotas tras la edad ordinaria en 2025. El crecimiento real de las bases de 2025 (−0,13 %) se fija con el paso (a) de la tabla 7 del IAE (2025).</p>
 </footer>
+</div>
+<div data-l="en" lang="en">
+<section class="texto">
+  <h2>How it works</h2>
+  <p>The IAE model needs a full mortality table: 121 probabilities per sex and year, with their improvement factors. The Weibull model replaces that table with a survival curve with four parameters, estimated only once.</p>
+  <div class="formula"><i>p</i>(<i>t</i>) = exp[ −( <i>t</i> / <i>a</i>(<i>x</i>) )<sup><i>b</i></sup> ],&nbsp;&nbsp;&nbsp;<i>a</i>(<i>x</i>) = <i>φ</i> · ( <i>a</i><sub>0</sub> + <i>a</i><sub>1</sub>(<i>x</i>−60) + <i>a</i><sub>2</sub>(<i>x</i>−60)<sup>2</sup> )</div>
+  <p class="pie-formula"><i>t</i>, months since retirement; <i>x</i>, retirement age. <span class="parametros"></span></p>
+  <p>Life expectancy has a closed form, so updating mortality requires no re-estimation: rescaling is enough.</p>
+  <div class="formula"><i>e</i><sub>65</sub> = <i>a</i>(65) · Γ(1 + 1/<i>b</i>)&nbsp;&nbsp;&nbsp;⇒&nbsp;&nbsp;&nbsp;<i>φ</i> = <i>e</i><sub>65</sub> / 21.14</div>
+  <p class="pie-formula">With <i>φ</i> = 1 the model reproduces the life expectancy of the 2020 tables (21.14 years). For 2025, 21.52 / 21.14 is all it takes.</p>
+  <p>The FdEA is then the ratio of an integral to a sum:</p>
+  <div class="formula">FdEA = 14 · BR · TS · ∫ e<sup>−<i>δt</i></sup> <i>p</i>(<i>t</i>) d<i>t</i> &nbsp;/&nbsp; Σ TC · base<sub><i>k</i></sub> · (1+<i>r</i>)<sup><i>k</i></sup></div>
+  <p class="pie-formula">BR, regulatory base (<i lang="es">base reguladora</i>); TS, replacement rate of each representative individual; TC, contribution rate; <i>δ</i>, future real GDP growth; <i>r</i>, past real growth. This whole page is that formula, evaluated 121 times in your browser.</p>
+</section>
+
+<section class="texto">
+  <h2>Why Weibull</h2>
+  <p>All laws are estimated on the same table in 2020 and carried over to 2025 by changing life expectancy only. Mean relative error against the grids published by the IAE:</p>
+  <div class="desplazable">
+  <table class="leyes">
+    <thead><tr><th>Survival law</th><th>Parameters</th><th>2020 (fit)</th><th>2025 (out of sample)</th></tr></thead>
+    <tbody>
+<tr><th scope="row">Mortality table (open formula)</th><td>121 × 2</td><td>1.5%</td><td>2.8%</td></tr>
+<tr class="dest"><th scope="row">Weibull, age-dependent scale (Eq. 16-17)</th><td>4</td><td>1.6%</td><td>2.8%</td></tr>
+<tr><th scope="row">Weibull on attained age</th><td>2</td><td>1.5%</td><td>2.8%</td></tr>
+<tr><th scope="row">Gompertz</th><td>2</td><td>1.5%</td><td>3.0%</td></tr>
+<tr><th scope="row">Gompertz-Makeham</th><td>3</td><td>1.4%</td><td>3.1%</td></tr>
+<tr><th scope="row">Exponential</th><td>1</td><td>11.8%</td><td>7.5%</td></tr>
+    </tbody>
+  </table>
+  </div>
+  <p style="margin-top:1rem">Laws with two to four parameters match the full table. Among them, Weibull carries over best to 2025: against the open formula itself, its error is 0.3% in 2020 and 0.03% in 2025. The remaining gap with the IAE is not demographic: it comes from the historical series of average contribution bases, which the IAE does not publish.</p>
+  <p>The model also reproduces the longevity effect measured by the IAE. Going from 21.52 to 22.63 years of life expectancy raises the mean FdEA by 4.5%; the IAE (2025, Table 15) estimates 4.6%.</p>
+  <p>This yields an automatic adjustment rule: each additional year of life expectancy at 65 requires cutting the initial pension by between 3.8% and 3.9% to keep the FdEA unchanged, with a factor that is practically the same at every retirement age. Move life expectancy in the panel and the page gives you the factor.</p>
+</section>
+
+<footer>
+  <p>Sources: Instituto de Actuarios Españoles (2020), <i lang="es">Factor de equidad actuarial del sistema contributivo de pensiones de jubilación español</i>; Instituto de Actuarios Españoles (2025), <i lang="es">Actualización del factor de equidad actuarial (2025)</i>; DGSFP (2020), PER2020 tables. IAE assumptions: pensions revalued with the CPI, 14 payments a year, regulatory base over the last 25 years, retirement contribution rate of 16.15% (2020) and of 16.37% plus the MEI (2025), contribution exemption after the ordinary retirement age in 2025. The 2025 real growth of contribution bases (−0.13%) is set using step (a) of Table 7 in IAE (2025).</p>
+</footer>
+</div>
 </div>
 
 <script>
@@ -241,13 +291,24 @@ const ESC = {
   "2025": {anio:2025, edades:[63,64,65,66,67,68,69,70], caej:D.ts25, iae:D.iae25, tc:0.1637, r:0.0224, i:0.0122, g:-0.0013, e65:21.52, exencion:true}
 };
 const $ = s => document.querySelector(s);
-const coma = (v,d=2) => (Math.abs(v)<0.5*Math.pow(10,-d)?0:v).toFixed(d).replace('.',',').replace('-','−');
-const pct = (v,d=2) => coma(100*v,d)+' %';
+let LANG=(()=>{try{const q=new URLSearchParams(location.search).get('lang');if(q==='es'||q==='en')return q;const g=localStorage.getItem('lang');if(g==='es'||g==='en')return g}catch(e){}
+  return (navigator.language||'es').toLowerCase().startsWith('es')?'es':'en'})();
+const EN=()=>LANG==='en', tr=(es,en)=>EN()?en:es;
+const coma = (v,d=2) => (Math.abs(v)<0.5*Math.pow(10,-d)?0:v).toFixed(d).replace('.',EN()?'.':',').replace('-','−');
+const PC = () => EN()?'%':' %';
+const pct = (v,d=2) => coma(100*v,d)+PC();
 let esc = "2020", vista = "modelo", sup = {...ESC["2020"]}, ultima = null;
 const mediaRef = {};
 
-document.getElementById('parametros').textContent =
-  `Estimación: a₀ = ${coma(D.par[0],1)}; a₁ = ${coma(D.par[1],2)}; a₂ = ${coma(D.par[2],4)}; b = ${coma(D.par[3],3)}.`;
+function aplicarIdioma(){
+  document.documentElement.lang=LANG;
+  document.title=tr('El factor de equidad actuarial en una fórmula','The actuarial fairness factor in one formula');
+  document.querySelectorAll('[data-en]').forEach(el=>{if(el.dataset.es==null)el.dataset.es=el.textContent;el.textContent=EN()?el.dataset.en:el.dataset.es});
+  document.querySelectorAll('[data-en-aria]').forEach(el=>{if(el.dataset.esAria==null)el.dataset.esAria=el.getAttribute('aria-label');el.setAttribute('aria-label',EN()?el.dataset.enAria:el.dataset.esAria)});
+  document.querySelectorAll('#c-lang button').forEach(b=>b.setAttribute('aria-pressed',b.dataset.v===LANG));
+  const par=`${tr('Estimación','Estimates')}: a₀ = ${coma(D.par[0],1)}; a₁ = ${coma(D.par[1],2)}; a₂ = ${coma(D.par[2],4)}; b = ${coma(D.par[3],3)}.`;
+  document.querySelectorAll('.parametros').forEach(el=>el.textContent=par);
+}
 
 const mezcla=(c1,c2,f)=>{const a=[0,2,4].map(i=>parseInt(c1.substr(i,2),16)),b=[0,2,4].map(i=>parseInt(c2.substr(i,2),16));
   return '#'+a.map((x,k)=>Math.round(x+(b[k]-x)*f).toString(16).padStart(2,'0')).join('');};
@@ -265,26 +326,27 @@ function pintar(){
   const I = e.iae, dif = I.map((r,i)=>r.map((v,j)=>v-W[i][j]));
   const mostrar = vista==='modelo'?W : vista==='iae'?I : dif;
   const cols = vista==='dif' ? colores(dif.map(r=>r.map(Math.abs)),true) : colores(mostrar,false);
-  $('#malla thead').innerHTML = '<tr><th scope="col">Años</th>'+e.edades.map(x=>`<th scope="col">${x}</th>`).join('')+'</tr>';
+  $('#malla thead').innerHTML = '<tr><th scope="col">'+tr('Años','Years')+'</th>'+e.edades.map(x=>`<th scope="col">${x}</th>`).join('')+'</tr>';
   $('#malla tbody').innerHTML = M.ANIOS.map((a,i)=>`<tr><th scope="row">${a}</th>`+
     e.edades.map((x,j)=>`<td tabindex="0" data-i="${i}" data-j="${j}" style="background:${cols[i][j]}">${coma(mostrar[i][j])}</td>`).join('')+'</tr>').join('');
   const rel = dif.flat().map((d,k)=>Math.abs(d)/I.flat()[k]);
   $('#k-mape').textContent = pct(rel.reduce((s,x)=>s+x,0)/rel.length,1);
-  $('#k-celdas').textContent = Math.round(100*dif.flat().filter(d=>Math.abs(d)<=0.05+1e-9).length/rel.length)+' %';
+  $('#k-celdas').textContent = Math.round(100*dif.flat().filter(d=>Math.abs(d)<=0.05+1e-9).length/rel.length)+PC();
   $('#k-media').textContent = coma(W.flat().reduce((s,x)=>s+x,0)/rel.length);
   $('#k-ms').textContent = Math.max(1,Math.round(ms))+' ms';
-  $('#leyenda').textContent = 'Filas: años cotizados. Columnas: edad de jubilación. ' + (vista==='dif' ? 'Verde, diferencia pequeña; rojo, la mayor diferencia.' : 'Colores con la escala del IAE: rojo, mínimo; verde, máximo.');
-  const tit = {modelo:'FdEA del modelo de Weibull', iae:'FdEA publicado por el IAE', dif:'Diferencia entre el IAE y el modelo'}[vista];
+  $('#leyenda').textContent = tr('Filas: años cotizados. Columnas: edad de jubilación. ','Rows: years of contributions. Columns: retirement age. ') + (vista==='dif' ? tr('Verde, diferencia pequeña; rojo, la mayor diferencia.','Green, small difference; red, the largest difference.') : tr('Colores con la escala del IAE: rojo, mínimo; verde, máximo.','Colours on the IAE scale: red, minimum; green, maximum.'));
+  const tit = (EN()?{modelo:'FdEA from the Weibull model', iae:'FdEA published by the IAE', dif:'Difference between the IAE and the model'}:{modelo:'FdEA del modelo de Weibull', iae:'FdEA publicado por el IAE', dif:'Diferencia entre el IAE y el modelo'})[vista];
   $('#titulo-malla').textContent = `${tit}, ${esc}`;
   const base = ESC[esc], cambiado = ['e65','r','i','g','tc'].some(k=>Math.abs(sup[k]-base[k])>1e-9);
   if(!(esc in mediaRef)) mediaRef[esc] = M.malla({...base, edades:e.edades, caej:e.caej}).flat().reduce((s,x)=>s+x,0)/rel.length;
   const soloE65 = cambiado && ['r','i','g','tc'].every(k=>Math.abs(sup[k]-base[k])<1e-9);
   const media = W.flat().reduce((s,x)=>s+x,0)/rel.length, fac = mediaRef[esc]/media;
   $('#aviso').textContent = soloE65
-    ? `Con una esperanza de vida de ${coma(sup.e65)} años, mantener el FdEA medio del escenario de referencia exigiría multiplicar la pensión inicial por ${coma(fac,3)} (${fac<1?'una reducción':'un aumento'} del ${coma(Math.abs(100*(1-fac)),1)} %). Es el factor de ajuste por longevidad del modelo.`
+    ? tr(`Con una esperanza de vida de ${coma(sup.e65)} años, mantener el FdEA medio del escenario de referencia exigiría multiplicar la pensión inicial por ${coma(fac,3)} (${fac<1?'una reducción':'un aumento'} del ${coma(Math.abs(100*(1-fac)),1)} %). Es el factor de ajuste por longevidad del modelo.`,
+         `With a life expectancy of ${coma(sup.e65)} years, keeping the mean FdEA of the reference scenario would require multiplying the initial pension by ${coma(fac,3)} (${fac<1?'a reduction':'an increase'} of ${coma(Math.abs(100*(1-fac)),1)}%). This is the model’s longevity adjustment factor.`)
     : cambiado
-    ? 'Has cambiado los supuestos del IAE: el error medio ya no mide el ajuste, sino cuánto se aleja el escenario de la malla publicada.'
-    : (esc==='2025' ? 'Validación fuera de muestra: la ley se estimó en 2020 y aquí solo cambia la esperanza de vida (21,14 → 21,52).' : 'Ajuste: la ley se estima sobre la tabla de 2020.');
+    ? tr('Has cambiado los supuestos del IAE: el error medio ya no mide el ajuste, sino cuánto se aleja el escenario de la malla publicada.','You have changed the IAE assumptions: the mean error no longer measures the fit, but how far the scenario is from the published grid.')
+    : (esc==='2025' ? tr('Validación fuera de muestra: la ley se estimó en 2020 y aquí solo cambia la esperanza de vida (21,14 → 21,52).','Out-of-sample validation: the law was estimated in 2020 and only life expectancy changes here (21.14 → 21.52).') : tr('Ajuste: la ley se estima sobre la tabla de 2020.','Fit: the law is estimated on the 2020 table.'));
   ultima = {W,I,e};
 }
 function sincronizar(){
@@ -292,7 +354,7 @@ function sincronizar(){
   etiquetas();
 }
 function etiquetas(){
-  $('#o-e65').textContent = coma(sup.e65)+' años';
+  $('#o-e65').textContent = coma(sup.e65)+tr(' años',' years');
   $('#o-r').textContent = pct(sup.r); $('#o-i').textContent = pct(sup.i);
   $('#o-g').textContent = pct(sup.g); $('#o-tc').textContent = pct(sup.tc);
 }
@@ -306,11 +368,17 @@ document.querySelectorAll('input[name=vista]').forEach(r=>r.addEventListener('ch
 $('#reiniciar').addEventListener('click',()=>{sup={...ESC[esc]}; sincronizar(); pintar();});
 function detalle(td){
   if(!td||!ultima) return; const i=+td.dataset.i, j=+td.dataset.j, {W,I,e}=ultima;
-  $('#detalle').textContent = `${e.edades[j]} años de edad y ${M.ANIOS[i]} cotizados: modelo ${coma(W[i][j])}, IAE ${coma(I[i][j])}, diferencia ${coma(I[i][j]-W[i][j])}.`;
+  $('#detalle').textContent = tr(`${e.edades[j]} años de edad y ${M.ANIOS[i]} cotizados: modelo ${coma(W[i][j])}, IAE ${coma(I[i][j])}, diferencia ${coma(I[i][j]-W[i][j])}.`,
+    `Age ${e.edades[j]} with ${M.ANIOS[i]} years of contributions: model ${coma(W[i][j])}, IAE ${coma(I[i][j])}, difference ${coma(I[i][j]-W[i][j])}.`);
 }
 $('#malla').addEventListener('mouseover',ev=>detalle(ev.target.closest('td')));
 $('#malla').addEventListener('focusin',ev=>detalle(ev.target.closest('td')));
-sincronizar(); pintar();
+document.querySelectorAll('#c-lang button').forEach(b=>b.addEventListener('click',()=>{if(b.dataset.v===LANG)return;LANG=b.dataset.v;
+  try{localStorage.setItem('lang',LANG)}catch(e){}
+  try{const u=new URL(location.href);u.searchParams.set('lang',LANG);history.replaceState(null,'',u)}catch(e){}
+  aplicarIdioma(); etiquetas(); pintar();}));
+aplicarIdioma(); sincronizar(); pintar();
 </script>
+<script data-goatcounter="https://mgonf.goatcounter.com/count" async src="https://gc.zgo.at/count.js"></script>
 </body>
 </html>
