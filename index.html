@@ -83,7 +83,8 @@ table.leyes{border-collapse:collapse;width:100%;font-size:.9rem;font-variant-num
 .leyes tr.dest th{font-weight:600}
 footer{margin-top:3rem;padding-top:1rem;border-top:1px solid var(--regla);font-size:.8rem;color:var(--tinta2);max-width:46rem}
 html[lang="es"] [data-l="en"],html[lang="en"] [data-l="es"]{display:none}
-.topbar{display:flex;justify-content:flex-end;margin-bottom:1rem}
+.topbar{display:flex;justify-content:flex-end;align-items:center;gap:.9rem;margin-bottom:1rem}
+.visits{color:var(--tinta2);font-size:.85rem;white-space:nowrap;font-variant-numeric:tabular-nums}
 .lang{display:inline-flex;border:1px solid var(--regla);border-radius:8px;overflow:hidden;background:var(--superficie)}
 .lang button{font:inherit;font-size:.85rem;font-weight:600;border:0;border-left:1px solid var(--regla);background:transparent;color:var(--tinta2);padding:.35rem .7rem;cursor:pointer}
 .lang button:first-child{border-left:0}
@@ -95,8 +96,8 @@ html[lang="es"] [data-l="en"],html[lang="en"] [data-l="es"]{display:none}
 </head>
 <body>
 <div class="envoltura">
+<div class="topbar"><span class="visits" id="visits" hidden></span><div class="lang" role="group" aria-label="Idioma / Language" id="c-lang"><button type="button" data-v="es" lang="es" aria-pressed="true">ES</button><button type="button" data-v="en" lang="en" aria-pressed="false">EN</button></div></div>
 <header>
-  <div class="topbar"><div class="lang" role="group" aria-label="Idioma / Language" id="c-lang"><button type="button" data-v="es" lang="es" aria-pressed="true">ES</button><button type="button" data-v="en" lang="en" aria-pressed="false">EN</button></div></div>
   <h1 data-en="The actuarial fairness factor in one formula">El factor de equidad actuarial en una fórmula</h1>
   <p class="entradilla" data-en="The grid published by the Spanish Institute of Actuaries (IAE), recomputed with a Weibull law and a single demographic input: life expectancy at 65. Move that input and the whole grid is recomputed.">La malla del Instituto de Actuarios Españoles, recalculada con una ley de Weibull y un único dato demográfico: la esperanza de vida a los 65 años. Mueve ese dato y la malla entera se recalcula.</p>
   <p class="autores" data-en="Marcos González Fernández and Francisco José Sáez Trujillo, Universidad de León">Marcos González Fernández y Francisco José Sáez Trujillo, Universidad de León</p>
@@ -376,7 +377,15 @@ $('#malla').addEventListener('focusin',ev=>detalle(ev.target.closest('td')));
 document.querySelectorAll('#c-lang button').forEach(b=>b.addEventListener('click',()=>{if(b.dataset.v===LANG)return;LANG=b.dataset.v;
   try{localStorage.setItem('lang',LANG)}catch(e){}
   try{const u=new URL(location.href);u.searchParams.set('lang',LANG);history.replaceState(null,'',u)}catch(e){}
-  aplicarIdioma(); etiquetas(); pintar();}));
+  aplicarIdioma(); etiquetas(); pintar(); pintarVisitas();}));
+let VISITAS=null;
+function pintarVisitas(){const el=$('#visits'); if(VISITAS==null){el.hidden=true;return}
+  el.textContent=VISITAS.toLocaleString(EN()?'en-GB':'es-ES')+tr(' visitas',' visits'); el.hidden=false;}
+(async()=>{const gc='https://mgonf.goatcounter.com/counter/', p=location.pathname;
+  const una=async ruta=>{try{const r=await fetch(gc+encodeURIComponent(ruta)+'.json'); if(!r.ok)return null;
+    const n=parseInt(String((await r.json()).count).replace(/[^0-9]/g,''),10); return isNaN(n)?null:n}catch(e){return null}};
+  const v=(await Promise.all([p,p+'?lang=es',p+'?lang=en'].map(una))).filter(x=>x!=null);
+  if(v.length){VISITAS=v.reduce((a,b)=>a+b,0); pintarVisitas();}})();
 aplicarIdioma(); sincronizar(); pintar();
 </script>
 <script data-goatcounter="https://mgonf.goatcounter.com/count" async src="https://gc.zgo.at/count.js"></script>
