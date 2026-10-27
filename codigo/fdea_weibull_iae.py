@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 """
 FdEA: modelo de fórmula abierta (IAE) frente a modelos paramétricos de supervivencia.
-Versión 1.2
+Versión 1.3
 
 Escenarios:
   - 2020 (ajuste): IAE (2020), Tabla 1 del informe IAE (2025).
@@ -30,11 +30,20 @@ Uso:
     python fdea_weibull_iae.py            # necesita per2020_ind_2orden.csv en la misma carpeta
 Incluye, además, el FdEA medio ponderado con los pesos del IAE (2020, tabla A1), la
 descomposición de los cambios de 2020 a 2025, el contraste de la regla de reescalado y el
-factor de ajuste de la pensión por longevidad.
+factor de ajuste de la pensión por longevidad, también con las demás leyes y con la tabla
+proyectada.
 
 Salidas: fdea_resultados.xlsx, mallas/*.png, resumen.json
 
-Cambios respecto a la versión 1.1:
+Cambios respecto a la versión 1.2 (no cambia ningún resultado anterior):
+  - Contraste de la regla de reescalado con todas las leyes, no solo con la de Weibull
+    (sección 4.5 del artículo).
+  - Factor de ajuste por longevidad de la tabla proyectada y de cada ley cuando la esperanza de
+    vida a los 65 años de la tabla proyectada aumenta un año desde 2025 (sección 4.6).
+  - Ganancia de esperanza de vida por edad de jubilación entre 2025 y 2045 en la tabla
+    proyectada y en cada ley (sección 4.5).
+
+Cambios de la versión 1.2 respecto a la 1.1:
   - Base reguladora conforme a la norma: periodo de 23 años en 2020 (276/322) y desfase
     nominal de las 24 últimas bases (antes: 300/350 en ambos años y todas las bases en
     términos reales).
@@ -54,7 +63,7 @@ from scipy.integrate import quad
 from scipy.optimize import brentq, minimize
 from scipy.special import gamma as G
 
-__version__ = "1.2"
+__version__ = "1.3"
 
 ANIOS = list(range(33, 44))
 
@@ -477,9 +486,11 @@ def main(ruta_per="per2020_ind_2orden.csv", salida="fdea_resultados.xlsx"):
         (Exponencial(), [0.05], [(1e-4, 1)]),
     ]
     res["parametros"] = {}
+    estados20 = {}                 # cada ley tal como queda en 2020 (para 5d-5f)
     for ley, x0, bnd in leyes:
         estimar(ley, objetivo, x0, bnd)
         ley.reescalar(ESC20.e65)   # todas las leyes reproducen exactamente la e65 del IAE
+        estados20[ley.nombre] = copy.deepcopy(ley)
         th20 = ley.th.copy(); phi20 = getattr(ley, "phi", None)
         tablas[f"{ley.nombre}_2020"] = fdea_desde_renta(rentas_ley(ley, ESC20), ESC20)
         ley.reescalar(ESC25.e65)
@@ -601,6 +612,59 @@ def main(ruta_per="per2020_ind_2orden.csv", salida="fdea_resultados.xlsx"):
     res["factor_ajuste"] = {str(e): {str(x): r0[x] / r[x] for x in ESC25.edades}
                             for e, r in ((e, renta_W(e)) for e in (22.52, 22.63, 23.11))}
 
+    # 5d) Contraste del reescalado con todas las leyes (sección 4.5): cada ley, estimada en 2020,
+    # se actualiza solo con la e65 de la tabla proyectada. Error medio y máximo (%) de su malla
+    # frente a la de la tabla. Para la ley de Weibull (Ec. 7-8) coincide con 5b.
+    def e65_proy(T):
+        return e_x(*mensualizar(kpx_tabla(per, 65, T, c20)))
+
+    contraste_leyes = []
+    for T in (2025, 2035, 2045, 2065):
+        esc = copy.deepcopy(ESC25); esc.anio_jub = T
+        e65_T = e65_proy(T)
+        A = fdea_desde_renta(rentas_tabla(per, esc, c20), esc)
+        fila = {"anio": T, "e65": e65_T}
+        for nombre, l20 in estados20.items():
+            l = copy.deepcopy(l20); l.reescalar(e65_T)
+            M = fdea_desde_renta(rentas_ley(l, esc), esc)
+            fila[nombre] = {"MAPE": float(100 * np.mean(np.abs(M / A - 1))),
+                            "max": float(100 * np.max(np.abs(M / A - 1)))}
+        contraste_leyes.append(fila)
+    res["contraste_leyes"] = contraste_leyes
+
+    # 5e) Factor de ajuste con la tabla proyectada (sección 4.6): la e65 de la tabla proyectada
+    # pasa de su valor en 2025 al de un año más (año fraccionario en que lo alcanza). Se compara
+    # el factor de la tabla con el de cada ley actualizada con esas dos e65. Supuestos de 2025.
+    e0 = e65_proy(ESC25.anio_jub)
+    T1 = brentq(lambda T: e65_proy(T) - (e0 + 1), ESC25.anio_jub, 2120)
+    esc1 = copy.deepcopy(ESC25); esc1.anio_jub = T1
+    A0, A1 = rentas_tabla(per, ESC25, c20), rentas_tabla(per, esc1, c20)
+    fal = {"e65_inicial": e0, "e65_final": e0 + 1, "anio_final": T1,
+           "Tabla proyectada": {str(x): A0[x] / A1[x] for x in ESC25.edades}}
+    for nombre, l20 in estados20.items():
+        L0 = copy.deepcopy(l20); L0.reescalar(e0)
+        L1 = copy.deepcopy(l20); L1.reescalar(e0 + 1)
+        ra, rb = rentas_ley(L0, ESC25), rentas_ley(L1, ESC25)
+        fal[nombre] = {str(x): ra[x] / rb[x] for x in ESC25.edades}
+    res["factor_ajuste_tabla_proyectada"] = fal
+
+    # 5f) Ganancia de esperanza de vida entre 2025 y 2045 por edad de jubilación (sección 4.5),
+    # en la tabla proyectada y en cada ley actualizada con la e65 de la tabla en esos dos años.
+    e45 = e65_proy(2045)
+
+    def ex_ley(l, x):   # sin truncar, como la e65 con la que se actualiza cada ley
+        with np.errstate(over="ignore"):    # exp(-inf) = 0 en la cola: sin efecto en el resultado
+            return quad(lambda t: l.tpx(x, t), 0, np.inf, limit=400)[0]
+
+    gan = {"Tabla proyectada": {str(x): e_x(*mensualizar(kpx_tabla(per, x, 2045, c20)))
+                                - e_x(*mensualizar(kpx_tabla(per, x, 2025, c20)))
+                                for x in EDADES_20}}
+    for nombre, l20 in estados20.items():
+        L0 = copy.deepcopy(l20); L0.reescalar(e0)
+        L1 = copy.deepcopy(l20); L1.reescalar(e45)
+        gan[nombre] = {str(x): ex_ley(L1, x) - ex_ley(L0, x) for x in EDADES_20}
+    res["ganancia_ex_2025_2045"] = gan
+
     # 6) Exportación
     from openpyxl import Workbook
     wb = Workbook(); ws = wb.active; ws.title = "metricas"
@@ -627,6 +691,21 @@ def main(ruta_per="per2020_ind_2orden.csv", salida="fdea_resultados.xlsx"):
     ws5 = wb.create_sheet("factor_ajuste"); ws5.append(["e65"] + ESC25.edades)
     for e, d in res["factor_ajuste"].items():
         ws5.append([float(e)] + [round(d[str(x)], 4) for x in ESC25.edades])
+    nombres = list(estados20)
+    ws7 = wb.create_sheet("contraste_leyes")
+    ws7.append(["año", "e65"] + [f"{n}: error {k}" for n in nombres for k in ("medio (%)", "máximo (%)")])
+    for d in contraste_leyes:
+        ws7.append([d["anio"], round(d["e65"], 4)] + [round(d[n][k], 4) for n in nombres for k in ("MAPE", "max")])
+    ws8 = wb.create_sheet("factor_ajuste_tabla")
+    coma = lambda v, d: f"{v:.{d}f}".replace(".", ",")
+    ws8.append([f"e65 de la tabla proyectada: {coma(fal['e65_inicial'], 4)} en 2025 y "
+                f"{coma(fal['e65_final'], 4)} en el año {coma(fal['anio_final'], 2)}"])
+    ws8.append(["modelo"] + ESC25.edades)
+    for n in ["Tabla proyectada"] + nombres:
+        ws8.append([n] + [round(fal[n][str(x)], 4) for x in ESC25.edades])
+    ws9 = wb.create_sheet("ganancia_ex_2025_2045"); ws9.append(["modelo"] + EDADES_20)
+    for n, d in gan.items():
+        ws9.append([n] + [round(d[str(x)], 4) for x in EDADES_20])
     os.makedirs("mallas", exist_ok=True)
     todas = {"IAE_2020": FDEA_IAE_20, "IAE_2025": FDEA_IAE_25, **tablas}
     for nombre, m in todas.items():
@@ -646,7 +725,9 @@ def main(ruta_per="per2020_ind_2orden.csv", salida="fdea_resultados.xlsx"):
         json.dump(res, fh, indent=1, ensure_ascii=False)
     print(json.dumps({k: res[k] for k in ("base_reguladora", "factor_qx", "parametros", "sensibilidad",
                                           "elasticidad_e65", "ponderados_2020", "sin_calibrar_2020",
-                                          "descomposicion", "contraste_reescalado", "factor_ajuste")},
+                                          "descomposicion", "contraste_reescalado", "factor_ajuste",
+                                          "contraste_leyes", "factor_ajuste_tabla_proyectada",
+                                          "ganancia_ex_2025_2045")},
                      indent=1, ensure_ascii=False))
 
 
