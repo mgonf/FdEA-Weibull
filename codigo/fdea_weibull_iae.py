@@ -2,6 +2,7 @@
 # -*- coding: utf-8 -*-
 """
 FdEA: modelo de fórmula abierta (IAE) frente a modelos paramétricos de supervivencia.
+Versión 1.2
 
 Escenarios:
   - 2020 (ajuste): IAE (2020), Tabla 1 del informe IAE (2025).
@@ -12,6 +13,14 @@ PIB; tipo real de las prestaciones = crecimiento real futuro del PIB; pensión r
 el IPC (constante en términos reales); tablas de pensionistas de la Seguridad Social (unisex),
 resumidas por su esperanza de vida a los 65 años (21,14 en 2020 y 21,52 en 2025).
 
+Base reguladora (art. 209.1 y disposición transitoria 8.ª del texto refundido de la LGSS):
+276 meses divididos entre 322 en 2020 y 300 meses entre 350 en 2025. Las bases de los dos
+últimos años se computan por su valor nominal y las anteriores se actualizan con el IPC hasta
+dos años antes de la jubilación (Devesa Carpio et al., 2020, nota 3). Como el modelo trabaja en
+términos reales, la inflación de esos dos años reduce el valor real de la base reguladora. Se
+usa el IPC de diciembre sobre diciembre del INE (2018 y 2019; 2023 y 2024), repartido de forma
+uniforme entre los meses de cada año. Como en el IAE, la jubilación se produce el 1 de enero.
+
 Como las tablas de la Seguridad Social no se publican, el modelo de fórmula abierta usa la
 forma de la PER2020_Ind_2ndo.orden (unisex) reescalada para reproducir la e65 del IAE.
 Los modelos paramétricos se estiman sobre esa tabla en 2020 y, para 2025, solo se actualiza
@@ -19,14 +28,25 @@ su parámetro de escala con la nueva e65 (un único dato).
 
 Uso:
     python fdea_weibull_iae.py            # necesita per2020_ind_2orden.csv en la misma carpeta
-Incluye, además, el FdEA medio ponderado con los pesos del IAE (2020, tabla A1), el contraste
-de la regla de reescalado y el factor de ajuste de la pensión por longevidad.
+Incluye, además, el FdEA medio ponderado con los pesos del IAE (2020, tabla A1), la
+descomposición de los cambios de 2020 a 2025, el contraste de la regla de reescalado y el
+factor de ajuste de la pensión por longevidad.
 
 Salidas: fdea_resultados.xlsx, mallas/*.png, resumen.json
+
+Cambios respecto a la versión 1.1:
+  - Base reguladora conforme a la norma: periodo de 23 años en 2020 (276/322) y desfase
+    nominal de las 24 últimas bases (antes: 300/350 en ambos años y todas las bases en
+    términos reales).
+  - Crecimiento real de las bases del 0,22% anual en ambos escenarios, el que documenta el IAE
+    (2025, p. 16). Se elimina el valor de -0,13% que la versión 1.1 fijaba para 2025.
+  - La ley de Weibull se denomina por sus ecuaciones en el artículo (Ec. 7-8).
+  - Se añaden la descomposición de 2020 a 2025 (Tabla 10) y otras cifras del texto.
 """
+import copy
 import json
 import os
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 
 import numpy as np
 import pandas as pd
@@ -34,11 +54,13 @@ from scipy.integrate import quad
 from scipy.optimize import brentq, minimize
 from scipy.special import gamma as G
 
+__version__ = "1.2"
+
 ANIOS = list(range(33, 44))
 
 # ------------------------------------------------------------------ datos IAE
 EDADES_20 = list(range(60, 71))
-CAEJ_20 = np.array([  # Tabla 2 del paper (IAE, 2020)
+CAEJ_20 = np.array([  # Tabla 3 del artículo (IAE, 2020, tabla 1)
     [0.565, 0.565, 0.617, 0.687, 0.774, 0.862, 0.932, 0.959, 0.987, 1.014, 1.042],
     [0.597, 0.668, 0.668, 0.704, 0.793, 0.883, 0.954, 0.982, 1.009, 1.037, 1.064],
     [0.611, 0.684, 0.757, 0.794, 0.812, 0.904, 0.977, 1.005, 1.032, 1.060, 1.087],
@@ -103,6 +125,9 @@ PESOS_MCVL_2018 = np.array([
     [0.19, 1.68, 0.36, 1.44, 0.66, 2.51, 0.08, 0.08, 0.02, 0.02, 0.06],
     [0.11, 2.17, 0.27, 1.66, 0.69, 2.50, 0.06, 0.04, 0.03, 0.01, 0.07],
     [1.29, 6.67, 1.52, 7.55, 4.18, 15.07, 0.39, 0.14, 0.18, 0.09, 0.56]]) / 100
+# Mismos pesos con las edades de 60 a 62 agrupadas en 63 (rango de 2025, como hace el IAE)
+PESOS_63_70 = PESOS_MCVL_2018[:, 3:].copy()
+PESOS_63_70[:, 0] += PESOS_MCVL_2018[:, :3].sum(1)
 
 
 def media_ponderada(M, w):
@@ -131,17 +156,21 @@ class Escenario:
     r_aport: float      # crecimiento real pasado del PIB
     i_prest: float      # crecimiento real futuro del PIB
     e65: float          # esperanza de vida a los 65 (tablas SS, unisex)
-    g_sal: float = 0.0022   # crecimiento real de las bases medias (IAE 2025: 0,22 %)
+    meses_br: int       # meses de bases que entran en la base reguladora
+    divisor_br: int     # divisor de la base reguladora
+    ipc: tuple          # IPC dic./dic. (INE) de los años anteriores a la jubilación: (Y-2, Y-1)
+    g_sal: float = 0.0022   # crecimiento real de las bases medias (IAE, 2025, p. 16: 0,22%)
     pagas: int = 14
     exencion: bool = False  # exención de cuotas tras la edad ordinaria (IAE 2025)
     edad_max: int = 120
 
 
-ESC20 = Escenario("2020", 2020, EDADES_20, CAEJ_20, FDEA_IAE_20, tc_2020, 0.0248, 0.0159, 21.14)
-# g_sal 2025: el IAE actualiza la serie histórica de bases medias 2020-2024, que no publica.
-# Se fija con el paso (a) de su Tabla 7 (+2,0 % en el FdEA medio), no con la malla.
+# 2020: DT 8.ª LGSS (23 años: 276 meses / 322); IPC de 2018 (1,2%) y 2019 (0,8%)
+ESC20 = Escenario("2020", 2020, EDADES_20, CAEJ_20, FDEA_IAE_20, tc_2020, 0.0248, 0.0159, 21.14,
+                  meses_br=276, divisor_br=322, ipc=(0.012, 0.008))
+# 2025: art. 209.1 LGSS (25 años: 300 meses / 350); IPC de 2023 (3,1%) y 2024 (2,8%)
 ESC25 = Escenario("2025", 2025, EDADES_25, TS_25, FDEA_IAE_25, tc_2025, 0.0224, 0.0122, 21.52,
-                  g_sal=-0.0013, exencion=True)
+                  meses_br=300, divisor_br=350, ipc=(0.031, 0.028), exencion=True)
 
 
 def mensual(x):
@@ -149,6 +178,27 @@ def mensual(x):
 
 
 # ------------------------------------------------------------ aportaciones y BR
+def indice_ipc(k, ipc):
+    """Nivel de precios del mes situado k meses antes de la jubilación, con el de diciembre del
+    año anterior (k = 1) igual a 1 y variación mensual uniforme dentro de cada año natural.
+    Desde k = 25 (diciembre de tres años antes) se mantiene constante: las bases anteriores se
+    actualizan con el IPC hasta esa fecha y las 24 últimas se toman por su valor nominal."""
+    p2, p1 = ipc                     # IPC dic./dic. de los años Y-2 y Y-1
+    k = np.minimum(np.asarray(k, dtype=float), 25)
+    return np.where(k <= 13, (1 + p1) ** (-(k - 1) / 12),
+                    (1 + p1) ** -1 * (1 + p2) ** (-(k - 13) / 12))
+
+
+def base_reguladora(esc: Escenario, nominal=True):
+    """Base reguladora en términos reales (precios de la jubilación; base real del último mes = 1).
+    Con nominal=False, todas las bases en términos reales (criterio de la versión 1.1)."""
+    k = np.arange(1, esc.meses_br + 1)
+    base = (1 + mensual(esc.g_sal)) ** (-(k - 1))
+    if nominal:
+        base = base * indice_ipc(k, esc.ipc)
+    return float(np.sum(base) / esc.divisor_br)
+
+
 def aportaciones_y_br(anios, edad, esc: Escenario):
     """Valores en términos reales; el FdEA no depende del nivel salarial."""
     n = 12 * anios
@@ -162,8 +212,7 @@ def aportaciones_y_br(anios, edad, esc: Escenario):
         edad_mes = edad - meses_antes / 12
         tc = np.where(edad_mes >= edad_ord, 0.0, tc)
     vaa_aport = np.sum(base * tc * (1 + mensual(esc.r_aport)) ** meses_antes)
-    br = base[-300:].sum() / 350
-    return vaa_aport, br
+    return vaa_aport, base_reguladora(esc)
 
 
 def fdea_desde_renta(renta_anual_por_edad, esc: Escenario):
@@ -224,8 +273,8 @@ def rentas_tabla(per, esc, c):
 # ------------------------------------------------------- leyes paramétricas
 # Cada ley define tpx(x, t) (t en años) y un parámetro de escala que se reajusta con e65.
 class WeibullPaper:
-    """Ec. 16-17 del paper: p(t) = exp(-(t / a(edad))^b), t en meses."""
-    nombre, n_par = "Weibull (Ec. 16-17)", 4
+    """Ec. 7-8 del artículo: p(t) = exp(-(t / a(edad))^b), t en meses."""
+    nombre, n_par = "Weibull (Ec. 7-8)", 4
 
     def __init__(self, a0=300., a1=0., a2=0., b=3.):
         self.th = np.array([a0, a1, a2, b])
@@ -336,7 +385,7 @@ def metricas(ref, mod):
     return dict(MAPE=100 * np.mean(np.abs(d / ref)), MAE=np.mean(np.abs(d)),
                 max_abs=np.max(np.abs(d)), max_rel=100 * np.max(np.abs(d / ref)),
                 sesgo=np.mean(d), pct_le_005=100 * np.mean(np.abs(d) <= 0.05 + 1e-9),
-                corr=np.corrcoef(ref.ravel(), mod.ravel())[0, 1])
+                corr=np.corrcoef(ref.ravel(), mod.ravel())[0, 1], media=np.mean(mod))
 
 
 ROJO, AMARILLO, VERDE = "F8696B", "FFEB84", "63BE7B"
@@ -402,7 +451,15 @@ def hoja_malla(ws, m, edades, invertir=False, colorear=None):
 # ------------------------------------------------------------------------ main
 def main(ruta_per="per2020_ind_2orden.csv", salida="fdea_resultados.xlsx"):
     per = cargar_per2020(ruta_per)
-    res, tablas, mets = {}, {}, []
+    res, tablas, mets = {"version": __version__}, {}, []
+
+    # 0) Base reguladora (común a todas las celdas de cada escenario)
+    res["base_reguladora"] = {
+        esc.nombre: {"meses": esc.meses_br, "divisor": esc.divisor_br, "ipc": list(esc.ipc),
+                     "g_sal": esc.g_sal, "BR": base_reguladora(esc),
+                     "BR_todo_real": base_reguladora(esc, nominal=False),
+                     "factor_nominal": base_reguladora(esc) / base_reguladora(esc, nominal=False)}
+        for esc in (ESC20, ESC25)}
 
     # 1) Tabla PER2020 reescalada a la e65 del IAE (fórmula abierta)
     c20, c25 = calibrar_tabla(per, ESC20), calibrar_tabla(per, ESC25)
@@ -429,9 +486,10 @@ def main(ruta_per="per2020_ind_2orden.csv", salida="fdea_resultados.xlsx"):
         tablas[f"{ley.nombre}_2025"] = fdea_desde_renta(rentas_ley(ley, ESC25), ESC25)
         res["parametros"][ley.nombre] = {"2020": th20.tolist(),
                                          "2025": ley.th.tolist(),
+                                         "phi_2020": phi20,
                                          "phi_2025": getattr(ley, "phi", None)}
 
-    # 3) Aplicación: sensibilidad del FdEA 2025 a la longevidad (Weibull Ec. 16-17)
+    # 3) Aplicación: sensibilidad del FdEA 2025 a la longevidad (Weibull Ec. 7-8)
     wp = leyes[0][0]
     sens = {}
     for e65 in [21.52, 22.52, 22.63, 23.11]:
@@ -450,23 +508,77 @@ def main(ruta_per="per2020_ind_2orden.csv", salida="fdea_resultados.xlsx"):
         d = metricas(esc.fdea_iae, m); d.update(modelo=nombre.rsplit("_", 1)[0], escenario=esc.nombre)
         mets.append(d)
     dfm = pd.DataFrame(mets)[["modelo", "escenario", "MAPE", "MAE", "max_abs", "max_rel",
-                              "sesgo", "pct_le_005", "corr"]].round(4)
+                              "sesgo", "pct_le_005", "corr", "media"]].round(4)
     res["metricas"] = dfm.to_dict(orient="records")
     print(dfm.to_string(index=False))
 
     # 5) Análisis adicionales
     wp_ = WeibullPaper(*wp.th); wp_.phi = wp.phi * ESC20.e65 / ESC25.e65   # Weibull en 2020
-    W20 = tablas["Weibull (Ec. 16-17)_2020"]
-    w63 = PESOS_MCVL_2018[:, 3:].copy(); w63[:, 0] += PESOS_MCVL_2018[:, :3].sum(1)
+    W20, W25 = tablas["Weibull (Ec. 7-8)_2020"], tablas["Weibull (Ec. 7-8)_2025"]
+    A20, A25 = tablas["Abierta_2020"], tablas["Abierta_2025"]
     res["ponderados_2020"] = {
         "IAE_60_70": media_ponderada(FDEA_IAE_20, PESOS_MCVL_2018),
         "Weibull_60_70": media_ponderada(W20, PESOS_MCVL_2018),
-        "IAE_63_70": media_ponderada(FDEA_IAE_20[:, 3:], w63),
-        "Weibull_63_70": media_ponderada(W20[:, 3:], w63)}
+        "IAE_63_70": media_ponderada(FDEA_IAE_20[:, 3:], PESOS_63_70),
+        "Weibull_63_70": media_ponderada(W20[:, 3:], PESOS_63_70)}
+    # Con los mismos pesos de 2018 (el IAE pondera 2025 con la MCVL de 2023, que no publica)
+    res["ponderados_2025_pesos_2018"] = {
+        "IAE": media_ponderada(FDEA_IAE_25, PESOS_63_70),
+        "Weibull": media_ponderada(W25, PESOS_63_70)}
+
+    # Cifras del texto: ajuste sin el segundo paso (escala sin calibrar a la e65 del IAE),
+    # perfil por edad, distancia entre Weibull y la fórmula abierta, y celda de mayor diferencia
+    ls = WeibullPaper(*wp.th)                     # phi = 1: parámetros de mínimos cuadrados
+    W20_ls = fdea_desde_renta(rentas_ley(ls, ESC20), ESC20)
+    res["sin_calibrar_2020"] = {"e65": float(ls.e65()),
+                                **{k: float(v) for k, v in metricas(FDEA_IAE_20, W20_ls).items()}}
+    res["perfil_edad"] = {
+        "2020": dict(zip(map(str, EDADES_20), (W20 / FDEA_IAE_20).mean(0).tolist())),
+        "2025": dict(zip(map(str, EDADES_25), (W25 / FDEA_IAE_25).mean(0).tolist()))}
+    res["weibull_vs_abierta"] = {
+        "2020": {"MAPE": float(100 * np.mean(np.abs(W20 / A20 - 1))), "max_abs": float(np.abs(W20 - A20).max())},
+        "2025": {"MAPE": float(100 * np.mean(np.abs(W25 / A25 - 1))), "max_abs": float(np.abs(W25 - A25).max())}}
+    res["leyes_vs_abierta"] = {
+        ley.nombre: {T: float(100 * np.mean(np.abs(tablas[f"{ley.nombre}_{T}"] / tablas[f"Abierta_{T}"] - 1)))
+                     for T in ("2020", "2025")} for ley, _, _ in leyes}
+    res["mayor_diferencia"] = {}
+    for T, M, I, ed in (("2020", W20, FDEA_IAE_20, EDADES_20), ("2025", W25, FDEA_IAE_25, EDADES_25)):
+        i, j = np.unravel_index(np.argmax(np.abs(M - I)), M.shape)
+        res["mayor_diferencia"][T] = {"anios": ANIOS[i], "edad": ed[j], "modelo": float(M[i, j]),
+                                      "IAE": float(I[i, j]), "dif": float(M[i, j] - I[i, j])}
+
+    # 5a) Descomposición de 2020 a 2025 (Tabla 10): se introducen los cambios de uno en uno,
+    # como en IAE (2025, tabla 7). Media simple de la malla 63-70 y media con los pesos de 2018.
+    def malla_W(esc, e65):
+        l = WeibullPaper(*wp.th); l.phi = wp_.phi * e65 / ESC20.e65
+        return fdea_desde_renta(rentas_ley(l, esc), esc)
+    b0 = copy.deepcopy(ESC20); b0.edades = EDADES_25; b0.caej = CAEJ_20[:, 3:]
+    sa = copy.deepcopy(b0); sa.anio_jub = ESC25.anio_jub; sa.r_aport = ESC25.r_aport
+    sa.meses_br, sa.divisor_br, sa.ipc = ESC25.meses_br, ESC25.divisor_br, ESC25.ipc
+    sb = copy.deepcopy(sa); sb.caej = TS_25; sb.tc = tc_2025
+    sd = copy.deepcopy(sb); sd.i_prest = ESC25.i_prest
+    se = copy.deepcopy(sd); se.exencion = True
+    pasos = [("2020 (63-70)", b0, ESC20.e65),
+             ("(a) año de jubilación, IPC, base reguladora y crecimiento pasado del PIB", sa, ESC20.e65),
+             ("(b) tasas de sustitución y tipo de cotización", sb, ESC20.e65),
+             ("(c) esperanza de vida 21,52", sb, ESC25.e65),
+             ("(d) crecimiento futuro del PIB 1,22%", sd, ESC25.e65),
+             ("exención de cuotas", se, ESC25.e65),
+             ("esperanza de vida de 2045 (22,63)", se, 22.63)]
+    desc, prev = [], None
+    for nombre, esc, e65 in pasos:
+        M = malla_W(esc, e65)
+        m, mp = float(M.mean()), media_ponderada(M, PESOS_63_70)[0]
+        desc.append({"paso": nombre, "media": m, "media_pond": mp,
+                     "var_media": None if prev is None else 100 * (m / prev[0] - 1),
+                     "var_pond": None if prev is None else 100 * (mp / prev[1] - 1)})
+        prev = (m, mp)
+    res["descomposicion"] = desc
+    res["descomposicion_IAE"] = {"2020 (63-70)": 1.551, "(a)": 1.582, "(b)": 1.528, "(c)": 1.552,
+                                 "(d)": 1.619, "(d) sin exención": 1.613}
 
     # 5b) Contraste del reescalado: la tabla aproximada se proyecta con las mejoras de la
     # PER2020 (factor de escala de 2020 fijo); Weibull solo recibe su e65. Supuestos de 2025.
-    import copy
     contraste = []
     for T in (2025, 2035, 2045, 2065):
         esc = copy.deepcopy(ESC25); esc.anio_jub = T
@@ -495,9 +607,20 @@ def main(ruta_per="per2020_ind_2orden.csv", salida="fdea_resultados.xlsx"):
     ws.append(list(dfm.columns))
     for r in dfm.itertuples(index=False):
         ws.append(list(r))
+    ws2 = wb.create_sheet("base_reguladora")
+    ws2.append(["escenario", "meses", "divisor", "IPC año -2", "IPC año -1", "g real", "BR",
+                "BR todo real", "factor"])
+    for k, d in res["base_reguladora"].items():
+        ws2.append([k, d["meses"], d["divisor"], *d["ipc"], d["g_sal"], round(d["BR"], 6),
+                    round(d["BR_todo_real"], 6), round(d["factor_nominal"], 6)])
     ws3 = wb.create_sheet("ponderados_2020"); ws3.append(["malla", "FdEA medio", "desv. típica"])
     for k, (m, d) in res["ponderados_2020"].items():
         ws3.append([k, round(m, 4), round(d, 4)])
+    ws6 = wb.create_sheet("descomposicion")
+    ws6.append(["paso", "media simple", "variación (%)", "media ponderada", "variación (%)"])
+    for d in desc:
+        ws6.append([d["paso"], round(d["media"], 4), None if d["var_media"] is None else round(d["var_media"], 2),
+                    round(d["media_pond"], 4), None if d["var_pond"] is None else round(d["var_pond"], 2)])
     ws4 = wb.create_sheet("contraste_reescalado"); ws4.append(list(res["contraste_reescalado"][0].keys()))
     for d in res["contraste_reescalado"]:
         ws4.append([round(v, 4) for v in d.values()])
@@ -521,9 +644,10 @@ def main(ruta_per="per2020_ind_2orden.csv", salida="fdea_resultados.xlsx"):
     res["tablas"] = {k: np.round(v, 4).tolist() for k, v in todas.items()}
     with open("resumen.json", "w") as fh:
         json.dump(res, fh, indent=1, ensure_ascii=False)
-    print(json.dumps({k: res[k] for k in ("factor_qx", "parametros", "sensibilidad", "elasticidad_e65",
-                                          "ponderados_2020", "contraste_reescalado", "factor_ajuste")},
-                     indent=1))
+    print(json.dumps({k: res[k] for k in ("base_reguladora", "factor_qx", "parametros", "sensibilidad",
+                                          "elasticidad_e65", "ponderados_2020", "sin_calibrar_2020",
+                                          "descomposicion", "contraste_reescalado", "factor_ajuste")},
+                     indent=1, ensure_ascii=False))
 
 
 if __name__ == "__main__":
