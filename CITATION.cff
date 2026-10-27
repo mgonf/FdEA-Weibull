@@ -1,0 +1,18 @@
+cff-version: 1.2.0
+message: "Si utiliza este software, cítelo con el DOI 10.5281/zenodo.22961454, que corresponde a todas sus versiones."
+type: software
+title: "FdEA-Weibull: código y calculadora del Factor de Equidad Actuarial con un modelo de Weibull"
+version: "v1.3"
+authors:
+  - family-names: "González Fernández"
+    given-names: "Marcos"
+    affiliation: "Universidad de León"
+    orcid: "https://orcid.org/0000-0002-0977-370X"
+  - family-names: "Sáez Trujillo"
+    given-names: "Francisco José"
+    affiliation: "Universidad de León"
+    orcid: "https://orcid.org/0000-0002-7859-422X"
+license: CC-BY-4.0
+doi: 10.5281/zenodo.22961454
+repository-code: "https://github.com/mgonf/FdEA-Weibull"
+url: "https://mgonf.github.io/FdEA-Weibull/"
