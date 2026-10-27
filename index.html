@@ -195,7 +195,7 @@ html[lang="es"] [data-l="en"],html[lang="en"] [data-l="es"]{display:none}
     </tbody>
   </table>
   </div>
-  <p style="margin-top:1rem">Frente al IAE, las leyes de dos a cuatro parámetros obtienen errores parecidos a los de la tabla completa: la diferencia que queda no es demográfica, sino del marco financiero común, como la serie histórica de bases medias, que el IAE no publica. Frente a la propia fórmula abierta, que aísla la parte demográfica, Weibull con escala según la edad se desvía un 0,3 % en 2020 y un 0,03 % en 2025, la menor desviación de todas las leyes en 2025.</p>
+  <p style="margin-top:1rem">Frente al IAE, las leyes de dos a cuatro parámetros obtienen errores parecidos a los de la tabla completa: la diferencia que queda no es demográfica, sino del marco financiero común, como la serie histórica de bases medias, que el IAE no publica. Frente a la propia fórmula abierta, que aísla la parte demográfica, Weibull con escala según la edad se desvía un 0,31 % en 2020 y un 0,03 % en 2025, la menor desviación de todas las leyes en 2025.</p>
   <p>El modelo también reproduce el efecto de la longevidad que mide el IAE. Pasar de 21,52 a 22,63 años de esperanza de vida eleva el FdEA medio un 4,5 %; el IAE (2025, tabla 15) estima un 4,6 %.</p>
   <p>De ahí sale una regla de ajuste automático: cada año adicional de esperanza de vida a los 65 exige reducir la pensión inicial entre un 3,8 % y un 3,9 % para mantener el FdEA, con un factor prácticamente igual en todas las edades de jubilación. Mueve la esperanza de vida en el panel y la página te da el factor.</p>
 </section>
@@ -234,7 +234,7 @@ html[lang="es"] [data-l="en"],html[lang="en"] [data-l="es"]{display:none}
     </tbody>
   </table>
   </div>
-  <p style="margin-top:1rem">Against the IAE, laws with two to four parameters achieve errors similar to those of the full table: the remaining gap is not demographic but comes from the common financial framework, such as the historical series of average contribution bases, which the IAE does not publish. Against the open formula itself, which isolates the demographic part, the Weibull law with an age-dependent scale deviates by 0.3% in 2020 and 0.03% in 2025, the smallest deviation of all laws in 2025.</p>
+  <p style="margin-top:1rem">Against the IAE, laws with two to four parameters achieve errors similar to those of the full table: the remaining gap is not demographic but comes from the common financial framework, such as the historical series of average contribution bases, which the IAE does not publish. Against the open formula itself, which isolates the demographic part, the Weibull law with an age-dependent scale deviates by 0.31% in 2020 and 0.03% in 2025, the smallest deviation of all laws in 2025.</p>
   <p>The model also reproduces the longevity effect measured by the IAE. Going from 21.52 to 22.63 years of life expectancy raises the mean FdEA by 4.5%; the IAE (2025, Table 15) estimates 4.6%.</p>
   <p>This yields an automatic adjustment rule: each additional year of life expectancy at 65 requires cutting the initial pension by between 3.8% and 3.9% to keep the FdEA unchanged, with a factor that is practically the same at every retirement age. Move life expectancy in the panel and the page gives you the factor.</p>
 </section>
@@ -338,7 +338,7 @@ function pintar(){
   $('#malla tbody').innerHTML = M.ANIOS.map((a,i)=>`<tr><th scope="row">${a}</th>`+
     e.edades.map((x,j)=>`<td tabindex="0" data-i="${i}" data-j="${j}" style="background:${cols[i][j]}">${coma(mostrar[i][j])}</td>`).join('')+'</tr>').join('');
   const rel = dif.flat().map((d,k)=>Math.abs(d)/I.flat()[k]);
-  $('#k-mape').textContent = pct(rel.reduce((s,x)=>s+x,0)/rel.length,1);
+  $('#k-mape').textContent = pct(rel.reduce((s,x)=>s+x,0)/rel.length,2);
   $('#k-celdas').textContent = Math.round(100*dif.flat().filter(d=>Math.abs(d)<=0.05+1e-9).length/rel.length)+PC();
   $('#k-media').textContent = coma(W.flat().reduce((s,x)=>s+x,0)/rel.length);
   $('#k-ms').textContent = Math.max(1,Math.round(ms))+' ms';
