@@ -3,6 +3,7 @@ message: "Si utiliza este software, cítelo con el DOI 10.5281/zenodo.22961454, 
 type: software
 title: "FdEA-Weibull: código y calculadora del Factor de Equidad Actuarial con un modelo de Weibull"
 version: "v1.3"
+date-released: "2026-10-27"
 authors:
   - family-names: "González Fernández"
     given-names: "Marcos"
