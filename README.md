@@ -1,6 +1,6 @@
 # El factor de equidad actuarial en una fórmula
 
-Material complementario del artículo *Una estimación del Factor de Equidad Actuarial mediante un modelo parsimonioso basado en la función de Weibull* (Marcos González Fernández y Francisco José Sáez Trujillo, Universidad de León), enviado a *Anales del Instituto de Actuarios Españoles*.
+Material complementario del artículo *El Factor de Equidad Actuarial en una fórmula cerrada: un modelo de Weibull para el sistema español de pensiones* (Marcos González Fernández y Francisco José Sáez Trujillo, Universidad de León), enviado a *Anales del Instituto de Actuarios Españoles*.
 
 ## Calculadora interactiva
 
@@ -22,7 +22,7 @@ python fdea_weibull_iae.py
 
 El script genera tres salidas:
 
-- `fdea_resultados.xlsx`: mallas coloreadas, métricas, FdEA medio ponderado, contraste de la regla de reescalado y factor de ajuste por longevidad;
+- `fdea_resultados.xlsx`: mallas coloreadas, métricas, base reguladora, FdEA medio ponderado, descomposición de 2020 a 2025, contraste de la regla de reescalado y factor de ajuste por longevidad;
 - `mallas/*.png`: las mallas en imagen;
 - `resumen.json`: todos los resultados en formato de datos.
 
@@ -30,8 +30,10 @@ El script genera tres salidas:
 
 - `datos/per2020_ind_2orden.csv`: tablas PER2020_Ind_2ndo.orden (DGSFP, Resolución de 17 de diciembre de 2020). Contiene la probabilidad de fallecimiento en el año base y el factor de mejora, por sexo.
 - Las mallas de FdEA, las tasas de sustitución y los pesos del gasto (MCVL 2018) del IAE están incluidos en el código. Proceden de Devesa Carpio et al. (2020, 2025).
+- El IPC de diciembre a diciembre que usa la base reguladora (2018, 2019, 2023 y 2024) procede del INE.
 
 ## Versiones
 
+- **v1.2**: base reguladora conforme a la norma: 276 meses entre 322 en 2020 y 300 entre 350 en 2025, con las bases de los dos últimos años por su valor nominal y las anteriores actualizadas con el IPC. Crecimiento real de las bases del 0,22 % en ambos escenarios. Añade la descomposición de 2020 a 2025.
 - **v1.1**: añade el FdEA medio ponderado, el contraste de la regla de reescalado y el factor de ajuste por longevidad.
 - **v1.0**: versión inicial.
